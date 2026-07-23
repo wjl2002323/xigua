@@ -4,20 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>瓜田灯火 · 全国西瓜供需地图</title>
-<script src="https://unpkg.com/d3@7.9.0/dist/d3.min.js" integrity="sha384-CjloA8y00+1SDAUkjs099PVfnY2KmDC2BZnws9kh8D/lX1s46w6EPhpXdqMfjK6i" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/topojson-client@3.1.0/dist/topojson-client.min.js" integrity="sha384-Ukv1p/xTma6P4/2bY5KzWBw+ydSpXmhCMtyciIQVDJ1RmOxtCYNMF1uXT9T63H67" crossorigin="anonymous"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;900&display=swap" rel="stylesheet">
+<script src="vendor/d3.min.js"></script>
+<script src="vendor/topojson-client.min.js"></script>
 <style>
   html,body{margin:0;height:100%;overflow:hidden;background:#050203;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:#e8d9c8;-webkit-font-smoothing:antialiased}
   a{color:#5ce8b2}a:hover{color:#8ff2cc}
   #map{position:absolute;inset:0;cursor:grab}
   #labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
-  .citylab{position:absolute;writing-mode:vertical-rl;font:600 9.5px "Noto Serif SC",serif;letter-spacing:2px;color:#bfae9d;background:rgba(8,4,5,.58);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:5px 2px;transform:translate(-50%,-50%);white-space:nowrap}
+  .citylab{position:absolute;writing-mode:vertical-rl;font:600 9.5px "Noto Serif SC","Songti SC","STSong","SimSun",serif;letter-spacing:2px;color:#bfae9d;background:rgba(8,4,5,.58);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:5px 2px;transform:translate(-50%,-50%);white-space:nowrap}
   .plate{background:rgba(9,4,6,.62);border:1px solid rgba(255,255,255,.07);border-radius:12px;backdrop-filter:blur(10px)}
   #titlePlate{position:absolute;top:18px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:12px;padding:10px 20px;z-index:5}
-  #seal{width:30px;height:30px;border-radius:6px;background:#8f1220;display:flex;align-items:center;justify-content:center;font:900 16px "Noto Serif SC",serif;color:#f5e6d0}
-  #titleTxt{font:900 19px/1 "Noto Serif SC",serif;letter-spacing:11px;color:#efe3d1}
+  #seal{width:30px;height:30px;border-radius:6px;background:#8f1220;display:flex;align-items:center;justify-content:center;font:900 16px "Noto Serif SC","Songti SC","STSong","SimSun",serif;color:#f5e6d0}
+  #titleTxt{font:900 19px/1 "Noto Serif SC","Songti SC","STSong","SimSun",serif;letter-spacing:11px;color:#efe3d1}
   #subTxt{font:600 10.5px/1 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;letter-spacing:2.5px;color:#a98e88;margin-top:7px}
   #searchBox{position:absolute;top:22px;right:22px;z-index:5;padding:9px 14px;display:flex;align-items:center;gap:8px}
   #searchBox input{background:none;border:none;outline:none;color:#e8d9c8;font-size:12px;width:200px;letter-spacing:1px}
@@ -34,7 +32,7 @@
   #legend .sw{width:9px;height:9px;border-radius:2px;flex:none}
   #legend .num{margin-left:auto;color:#9a7f76;font-variant-numeric:tabular-nums}
   #legend .div{height:1px;background:rgba(255,77,94,.18);margin:4px 0}
-  #caption{position:absolute;left:50%;bottom:118px;transform:translateX(-50%);z-index:4;font:600 21px "Noto Serif SC",serif;letter-spacing:7px;color:#e9dcc6;text-shadow:0 2px 18px rgba(0,0,0,.9);white-space:nowrap;pointer-events:none}
+  #caption{position:absolute;left:50%;bottom:118px;transform:translateX(-50%);z-index:4;font:600 21px "Noto Serif SC","Songti SC","STSong","SimSun",serif;letter-spacing:7px;color:#e9dcc6;text-shadow:0 2px 18px rgba(0,0,0,.9);white-space:nowrap;pointer-events:none}
   #chips{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);z-index:5;padding:10px 16px;display:flex;flex-direction:column;gap:8px;max-width:92vw}
   .chiprow{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
   .chiprow::-webkit-scrollbar{display:none}
@@ -45,7 +43,7 @@
   .vdiv{width:1px;height:14px;background:rgba(255,77,94,.25);flex:none}
   #card{position:absolute;right:22px;top:96px;z-index:6;width:250px;padding:16px;display:none}
   #card.show{display:block}
-  #card h3{margin:0;font:900 17px "Noto Serif SC",serif;letter-spacing:2px;color:#f5ecdc}
+  #card h3{margin:0;font:900 17px "Noto Serif SC","Songti SC","STSong","SimSun",serif;letter-spacing:2px;color:#f5ecdc}
   #card .tag{font-size:10.5px;color:#c9a7a0;letter-spacing:2px;margin-top:5px}
   #card .kv{display:flex;justify-content:space-between;font-size:12px;margin-top:9px;color:#cbb4a6}
   #card .kv b{color:#f0e2cf;font-weight:600;font-variant-numeric:tabular-nums}
@@ -143,12 +141,15 @@ function fitProjection() {
 }
 addEventListener('resize', resize); resize();
 
-fetch('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-50m.json').then(r => r.json()).then(topo => {
+fetch('vendor/countries-50m.json').then(r => r.json()).then(topo => {
   const all = topojson.feature(topo, topo.objects.countries).features;
   landFeats = all.filter(f => f.id === '156' || f.id === '158');
   fitProjection();
   focusHome();
   requestAnimationFrame(frame);
+}).catch(() => {
+  document.getElementById('caption').textContent = '地图数据加载失败 · 请刷新重试';
+  document.getElementById('subTxt').textContent = '本地地图数据缺失（vendor/countries-50m.json）';
 });
 // 省级轮廓（阿里 DataV GeoAtlas，失败则仅显示国界）
 fetch('https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json').then(r => r.json())
