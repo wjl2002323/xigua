@@ -45,6 +45,7 @@
         tons: Math.round(range(3, 80)), daysLeft: Math.round(range(1, 14)),
         phone: '1' + pick(['39', '58', '86', '52']) + '****' + Math.floor(range(1000, 9999)),
         priceWish: rnd() < 0.5 ? (range(0.4, 1.4)).toFixed(1) : null,
+        createdAt: '2026-07-' + String(1 + (sid % 21)).padStart(2, '0'),
       });
     }
     for (let i = 0; i < dw * 1.4; i++) {
@@ -57,6 +58,7 @@
         tons: t === 'individual' ? +(range(0.05, 0.5)).toFixed(2) : t === 'store' ? Math.round(range(2, 20)) : Math.round(range(50, 400)),
         radiusKm: t === 'individual' ? Math.round(range(40, 90)) : t === 'store' ? Math.round(range(100, 260)) : Math.round(range(260, 620)),
         phone: '1' + pick(['37', '50', '88', '99']) + '****' + Math.floor(range(1000, 9999)),
+        createdAt: '2026-07-' + String(1 + (did % 21)).padStart(2, '0'),
       });
     }
   });
