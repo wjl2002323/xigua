@@ -1,2 +1,4 @@
 .DS_Store
 nohup.out
+.claude/scheduled_tasks.lock
+.gstack/
