@@ -64,6 +64,10 @@
   body.mobile #searchBox{top:64px;right:10px;left:10px;padding:8px 12px}
   body.mobile #searchBox input{width:100%}
   body.mobile #legend{display:none}
+  #legendMini{display:none}
+  body.mobile #legendMini{position:absolute;top:118px;left:10px;z-index:5;display:flex;align-items:center;gap:8px;padding:10px 14px;font-size:11.5px;letter-spacing:1px;color:#cbb4a6;cursor:pointer;user-select:none}
+  body.mobile #legendMini .tri{font-size:9px;color:#9a7f76}
+  body.mobile.legend-open #legend{display:block;left:10px;right:auto;bottom:auto;top:164px;width:196px}
   body.mobile #caption{font-size:15px;letter-spacing:2px;bottom:108px}
   body.mobile #chips{bottom:10px;width:calc(100vw - 20px);padding:8px 10px}
   body.mobile #card{left:10px;right:10px;top:auto;bottom:104px;width:auto}
@@ -90,6 +94,7 @@
   <div class="row" style="cursor:default"><span class="sw" style="background:rgba(92,232,178,.35)"></span>潜在匹配线<span class="num" id="nL"></span></div>
   <div class="row" style="cursor:default"><span class="sw" style="background:#d6fff0;box-shadow:0 0 8px #8ff2cc"></span>已点亮 · 成交<span class="num" id="nD"></span></div>
 </div>
+<div id="legendMini" class="plate"><span class="tri">▸</span><span id="lgMiniTxt"></span></div>
 <div id="caption"></div>
 <div id="chips" class="plate">
   <div class="chiprow"><span class="chiplab">分类</span>
@@ -349,6 +354,7 @@ function refreshStats() {
   document.getElementById('nS').textContent = nS; document.getElementById('nI').textContent = nI;
   document.getElementById('nT').textContent = nT; document.getElementById('nF').textContent = nF;
   document.getElementById('nL').textContent = nL; document.getElementById('nD').textContent = nD;
+  document.getElementById('lgMiniTxt').textContent = `${nS} 供给 · ${nI + nT + nF} 需求 · ${nD} 成交`;
   const inFilter = l => typeF !== 'supply' && demandVisible(D.dIndex[l.d]);
   const fL = typeF === 'all' ? nL : D.links.filter(inFilter).length;
   const fDeals = typeF === 'all' ? D.links.filter(l => l.deal) : D.links.filter(l => l.deal && inFilter(l));
@@ -393,6 +399,10 @@ function openCard(p) {
   card.classList.add('show'); refreshStats();
 }
 document.getElementById('cardX').onclick = () => { selected = null; card.classList.remove('show'); refreshStats(); };
+document.getElementById('legendMini').onclick = () => {
+  const open = document.body.classList.toggle('legend-open');
+  document.querySelector('#legendMini .tri').textContent = open ? '▾' : '▸';
+};
 document.getElementById('btnCall').onclick = () => {
   if (!selected) return;
   const num = String(selected.phone);
