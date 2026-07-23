@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;900&display=swap" rel="stylesheet">
+<style>
+  body{margin:0;background:#080304;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:#e8d9c8}
+  a{color:#5ce8b2}a:hover{color:#8ff2cc}
+  input::placeholder{color:#7d625c}
+</style>
+</helmet>
+<div style="display:flex;align-items:flex-start;gap:56px;padding:56px;width:max-content">
+  <div style="position:absolute;top:18px;left:56px;font-family:'Noto Serif SC',serif;font-weight:900;font-size:15px;letter-spacing:6px;color:#c9a7a0">瓜田灯火 · 手机端三屏</div>
+  <div style="display:flex;flex-direction:column;gap:14px;align-items:center">
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+      <iframe src="./瓜田灯火.html?mobile=1" style="width:100%;height:100%;border:none;display:block;background:#050203" title="地图主屏"></iframe>
+    </x-import>
+    <div style="font-size:12px;letter-spacing:3px;color:#9a7f76">01 · 地图主屏</div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:14px;align-items:center">
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+      <div style="height:100%;display:flex;flex-direction:column;background:linear-gradient(180deg,#12060a,#0a0507 40%)">
+        <div style="padding:16px 20px 0">
+          <div style="font-family:'Noto Serif SC',serif;font-weight:900;font-size:26px;letter-spacing:4px;color:#f3e7d5">我要卖瓜</div>
+          <div style="font-size:12px;letter-spacing:1px;color:#9a7f76;margin-top:6px">填好这四样，你的瓜田就会在地图上亮起来</div>
+        </div>
+        <div style="flex:1;overflow:auto;padding:0 20px 12px">
+          <div style="font-size:12px;letter-spacing:2px;color:#9a7f76;margin:20px 0 8px">瓜田位置</div>
+          <div style="background:#160a0b;border:1px solid rgba(255,77,94,.22);border-radius:12px;padding:14px;display:flex;align-items:center;gap:10px;min-height:44px;box-sizing:border-box">
+            <span style="color:#5ce8b2">◎</span>
+            <div style="flex:1;font-size:14px">山东省潍坊市昌乐县 · 已定位</div>
+            <div style="font-size:12px;color:#5ce8b2;padding:8px 10px">重新定位</div>
+          </div>
+          <div style="font-size:12px;letter-spacing:2px;color:#9a7f76;margin:20px 0 8px">品种</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            <sc-for list="{{ varietyChips }}" as="c" hint-placeholder-count="6">
+              <div style="{{ c.style }}" onClick="{{ c.onClick }}">{{ c.label }}</div>
+            </sc-for>
+          </div>
+          <div style="font-size:12px;letter-spacing:2px;color:#9a7f76;margin:20px 0 8px">可供量</div>
+          <div style="background:#160a0b;border:1px solid rgba(255,77,94,.22);border-radius:12px;padding:8px;display:flex;align-items:center;gap:8px">
+            <div style="width:52px;height:48px;border-radius:9px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:22px;color:#cdb6a8;cursor:pointer" onClick="{{ tonsDec }}">−</div>
+            <div style="flex:1;text-align:center"><span style="font-size:26px;font-weight:700;color:#f0e2cf">{{ tons }}</span><span style="font-size:13px;color:#9a7f76;margin-left:6px">吨</span></div>
+            <div style="width:52px;height:48px;border-radius:9px;background:rgba(92,232,178,.12);display:flex;align-items:center;justify-content:center;font-size:22px;color:#5ce8b2;cursor:pointer" onClick="{{ tonsInc }}">＋</div>
+          </div>
+          <div style="font-size:12px;letter-spacing:2px;color:#9a7f76;margin:20px 0 8px">还能卖多久（售卖窗口）</div>
+          <div style="display:flex;gap:8px">
+            <sc-for list="{{ windowChips }}" as="c" hint-placeholder-count="3">
+              <div style="{{ c.style }}" onClick="{{ c.onClick }}">{{ c.label }}</div>
+            </sc-for>
+          </div>
+          <sc-if value="{{ showPrice }}" hint-placeholder-val="{{ true }}">
+            <div style="font-size:12px;letter-spacing:2px;color:#9a7f76;margin:20px 0 8px">期望价（选填）</div>
+            <div style="background:#160a0b;border:1px solid rgba(255,77,94,.22);border-radius:12px;padding:0 14px;display:flex;align-items:center;min-height:48px">
+              <input placeholder="不填就是面议" style="flex:1;background:none;border:none;outline:none;color:#e8d9c8;font-size:14px"><span style="font-size:12px;color:#9a7f76">元/斤</span>
+            </div>
+          </sc-if>
+          <div style="font-size:12px;letter-spacing:2px;color:#9a7f76;margin:20px 0 8px">联系电话</div>
+          <div style="background:#160a0b;border:1px solid rgba(255,77,94,.22);border-radius:12px;padding:0 14px;display:flex;align-items:center;min-height:48px">
+            <input placeholder="买家会直接打给你" style="flex:1;background:none;border:none;outline:none;color:#e8d9c8;font-size:14px">
+          </div>
+        </div>
+        <div style="padding:10px 20px 22px">
+          <div style="height:52px;border-radius:14px;background:#1f8a63;box-shadow:0 0 22px rgba(92,232,178,.35);display:flex;align-items:center;justify-content:center;font-size:16px;letter-spacing:4px;color:#eafff4;cursor:pointer" onClick="{{ submitSell }}">{{ sellCta }}</div>
+        </div>
+      </div>
+    </x-import>
+    <div style="font-size:12px;letter-spacing:3px;color:#9a7f76">02 · 瓜农 · 供给注册</div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:14px;align-items:center">
+    <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ true }}" hint-size="402px,874px">
+      <div style="height:100%;display:flex;flex-direction:column;background:linear-gradient(180deg,#120a06,#0a0607 40%)">
+        <div style="padding:16px 20px 0">
+          <div style="font-family:'Noto Serif SC',serif;font-weight:900;font-size:26px;letter-spacing:4px;color:#f3e7d5">我要收瓜</div>
+          <div style="font-size:12px;letter-spacing:1px;color:#9a7f76;margin-top:6px">告诉瓜农你在哪、要多少、愿意从多远拉货</div>
+        </div>
+        <div style="flex:1;overflow:auto;padding:0 20px 12px">
+          <div style="font-size:12px;letter-spacing:2px;color:#9a7f76;margin:20px 0 8px">我是</div>
+          <div style="display:flex;gap:8px">
+            <sc-for list="{{ typeCards }}" as="c" hint-placeholder-count="3">
+              <div style="{{ c.style }}" onClick="{{ c.onClick }}">
+                <div style="font-size:15px;font-weight:600">{{ c.label }}</div>
+                <div style="font-size:10.5px;color:#9a7f76;margin-top:4px">{{ c.desc }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="font-size:12px;letter-spacing:2px;color:#9a7f76;margin:20px 0 8px">收货位置</div>
+          <div style="background:#170d08;border:1px solid rgba(255,180,84,.25);border-radius:12px;padding:14px;display:flex;align-items:center;gap:10px;min-height:44px;box-sizing:border-box">
+            <span style="color:#ffb454">◎</span>
+            <div style="flex:1;font-size:14px">北京市大兴区 · 已定位</div>
+            <div style="font-size:12px;color:#ffb454;padding:8px 10px">重新定位</div>
+          </div>
+          <div style="font-size:12px;letter-spacing:2px;color:#9a7f76;margin:20px 0 8px">需求量</div>
+          <div style="background:#170d08;border:1px solid rgba(255,180,84,.25);border-radius:12px;padding:0 14px;display:flex;align-items:center;min-height:48px">
+            <input placeholder="{{ tonsPlaceholder }}" style="flex:1;background:none;border:none;outline:none;color:#e8d9c8;font-size:14px"><span style="font-size:12px;color:#9a7f76">吨</span>
+          </div>
+          <div style="font-size:12px;letter-spacing:2px;color:#9a7f76;margin:20px 0 8px">收货半径 · 愿意从多远拉货</div>
+          <div style="background:#170d08;border:1px solid rgba(255,180,84,.25);border-radius:12px;padding:16px 14px">
+            <div style="display:flex;align-items:baseline;justify-content:space-between">
+              <span style="font-size:26px;font-weight:700;color:#f0e2cf">{{ radius }}<span style="font-size:13px;color:#9a7f76;margin-left:4px">km</span></span>
+              <span style="font-size:11.5px;color:#ffb454">约 {{ radiusCount }} 处瓜田可达</span>
+            </div>
+            <input type="range" min="40" max="600" step="10" value="{{ radius }}" onChange="{{ onRadius }}" style="width:100%;margin-top:12px;accent-color:#ffb454">
+            <div style="display:flex;justify-content:space-between;font-size:10px;color:#7d625c;margin-top:4px"><span>同城 40km</span><span>跨省 600km</span></div>
+          </div>
+          <div style="font-size:12px;letter-spacing:2px;color:#9a7f76;margin:20px 0 8px">联系电话</div>
+          <div style="background:#170d08;border:1px solid rgba(255,180,84,.25);border-radius:12px;padding:0 14px;display:flex;align-items:center;min-height:48px">
+            <input placeholder="瓜农会直接打给你" style="flex:1;background:none;border:none;outline:none;color:#e8d9c8;font-size:14px">
+          </div>
+        </div>
+        <div style="padding:10px 20px 22px">
+          <div style="height:52px;border-radius:14px;background:#b26a1d;box-shadow:0 0 22px rgba(255,180,84,.3);display:flex;align-items:center;justify-content:center;font-size:16px;letter-spacing:4px;color:#fff3df;cursor:pointer" onClick="{{ submitBuy }}">{{ buyCta }}</div>
+        </div>
+      </div>
+    </x-import>
+    <div style="font-size:12px;letter-spacing:3px;color:#9a7f76">03 · 需求发布（点位详情见 01 屏）</div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;radiusDefault&quot;: {&quot;editor&quot;: &quot;range&quot;, &quot;default&quot;: 200, &quot;min&quot;: 40, &quot;max&quot;: 600, &quot;step&quot;: 10, &quot;unit&quot;: &quot;km&quot;, &quot;tsType&quot;: &quot;number&quot;, &quot;section&quot;: &quot;需求发布&quot;}, &quot;showPriceField&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;供给注册&quot;}}">
+class Component extends DCLogic {
+  state = { variety: '8424', win: '一周内', tons: 18, dtype: 'store', radius: 200, sold: false, bought: false };
+  chip(on, accent) {
+    const mint = accent === 'amber' ? '255,180,84' : '92,232,178';
+    return {
+      padding: '0 16px', minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      borderRadius: 10, fontSize: 14, cursor: 'pointer', boxSizing: 'border-box',
+      border: on ? `1px solid rgba(${mint},.65)` : '1px solid rgba(255,255,255,.12)',
+      background: on ? `rgba(${mint},.12)` : 'rgba(255,255,255,.03)',
+      color: on ? (accent === 'amber' ? '#ffe9c9' : '#d6ffef') : '#cdb6a8',
+    };
+  }
+  renderVals() {
+    const s = this.state;
+    const radius = s.radius ?? (this.props.radiusDefault ?? 200);
+    return {
+      showPrice: this.props.showPriceField ?? true,
+      varietyChips: ['麒麟', '8424', '黑美人', '甜王', '硒砂瓜', '特小凤'].map(v => ({
+        label: v, style: this.chip(v === s.variety), onClick: () => this.setState({ variety: v }),
+      })),
+      windowChips: ['3天内', '一周内', '两周内'].map(w => ({
+        label: w, style: { ...this.chip(w === s.win), flex: 1 }, onClick: () => this.setState({ win: w }),
+      })),
+      tons: s.tons,
+      tonsDec: () => this.setState(p => ({ tons: Math.max(1, p.tons - 1) })),
+      tonsInc: () => this.setState(p => ({ tons: p.tons + 1 })),
+      typeCards: [
+        { k: 'individual', label: '个人', desc: '家里吃 · 少量' },
+        { k: 'store', label: '水果店', desc: '门店补货' },
+        { k: 'factory', label: '工厂', desc: '加工 · 大宗' },
+      ].map(t => ({
+        label: t.label, desc: t.desc,
+        style: { ...this.chip(t.k === s.dtype, 'amber'), flex: 1, flexDirection: 'column', alignItems: 'flex-start', padding: '12px 12px', minHeight: 62 },
+        onClick: () => this.setState({ dtype: t.k, radius: t.k === 'individual' ? 60 : t.k === 'store' ? 200 : 420 }),
+      })),
+      tonsPlaceholder: s.dtype === 'individual' ? '例如 0.1（两三个瓜也行）' : s.dtype === 'store' ? '例如 5' : '例如 200',
+      radius,
+      radiusCount: Math.max(2, Math.round(radius / 7)),
+      onRadius: e => this.setState({ radius: +e.target.value }),
+      sellCta: s.sold ? '已点亮 · 等买家来电' : '点亮我的瓜田',
+      buyCta: s.bought ? '已发布 · 正在为你连线' : '发布需求',
+      submitSell: () => this.setState({ sold: true }),
+      submitBuy: () => this.setState({ bought: true }),
+    };
+  }
+}
+</script>
+</body>
+</html>
