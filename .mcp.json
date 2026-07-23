@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "edgeone-pages": {
+      "command": "npx",
+      "args": ["@edgeone/makers-mcp@latest", "--region", "china"],
+      "env": {
+        "EDGEONE_PAGES_API_TOKEN": "${EDGEONE_PAGES_API_TOKEN}"
+      }
+    }
+  }
+}
