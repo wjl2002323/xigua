@@ -103,6 +103,7 @@
 <script>
 const D = window.GTDATA;
 const mobile = new URLSearchParams(location.search).has('mobile');
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
 if (mobile) document.body.classList.add('mobile');
 const cv = document.getElementById('map'), ctx = cv.getContext('2d');
 let W, H, dpr = Math.min(devicePixelRatio || 1, 2);
@@ -166,6 +167,7 @@ function urgColor(days) { return days <= 3 ? '#ff4b3e' : days <= 7 ? '#ffb454' :
 const comets = [];
 function seedComets() {
   comets.length = 0;
+  if (RM) return;
   const pool = D.links.filter(linkVisible);
   for (let i = 0; i < Math.min(46, pool.length); i++)
     comets.push({ l: pool[Math.floor(Math.random() * pool.length)], t: Math.random(), v: .0016 + Math.random() * .003 });
@@ -280,7 +282,7 @@ function frame(now) {
     if (mode === 'urgency') {
       const c = urgColor(s.daysLeft);
       col = c === '#ff4b3e' ? 'rgba(255,75,62,' : c === '#ffb454' ? 'rgba(255,180,84,' : 'rgba(92,232,178,';
-      if (s.daysLeft <= 3) r *= 1 + .28 * Math.sin(tm * 5 + s.xy[0]);
+      if (s.daysLeft <= 3 && !RM) r *= 1 + .28 * Math.sin(tm * 5 + s.xy[0]);
     }
     drawPt(s, col, r, mode !== 'plain');
   });
@@ -293,7 +295,7 @@ function frame(now) {
   if (selected) {
     const x = sx(selected), y = sy(selected);
     ctx.globalCompositeOperation = 'lighter';
-    for (let i = 0; i < 2; i++) { // 辐射波纹
+    if (!RM) for (let i = 0; i < 2; i++) { // 辐射波纹
       const p = ((tm - selT) * .55 + i * .5) % 1;
       ctx.strokeStyle = `rgba(240,255,248,${.45 * (1 - p)})`; ctx.lineWidth = 1.2;
       ctx.beginPath(); ctx.arc(x, y, 10 + p * 64, 0, 7); ctx.stroke();
@@ -371,7 +373,13 @@ function openCard(p) {
   card.classList.add('show'); refreshStats();
 }
 document.getElementById('cardX').onclick = () => { selected = null; card.classList.remove('show'); refreshStats(); };
-document.getElementById('btnCall').onclick = () => toast('已复制号码，请用手机拨打');
+document.getElementById('btnCall').onclick = () => {
+  if (!selected) return;
+  const num = String(selected.phone);
+  if (navigator.clipboard && navigator.clipboard.writeText)
+    navigator.clipboard.writeText(num).then(() => toast('已复制号码，请用手机拨打'), () => toast('号码：' + num));
+  else toast('号码：' + num);
+};
 document.getElementById('btnDeal').onclick = () => {
   if (!selected) return;
   const my = D.links.filter(l => (l.s === selected.id || l.d === selected.id) && !l.deal).sort((a, b) => a.km - b.km);
