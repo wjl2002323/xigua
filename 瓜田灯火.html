@@ -351,7 +351,20 @@ function refreshStats() {
   document.getElementById('nS').textContent = nS; document.getElementById('nI').textContent = nI;
   document.getElementById('nT').textContent = nT; document.getElementById('nF').textContent = nF;
   document.getElementById('nL').textContent = nL; document.getElementById('nD').textContent = nD;
-  const cap = { potential: `${nL.toLocaleString()} 条潜在连线，等待被点亮`, deals: `${nD} 盏灯已点亮 · 约 ${Math.round(dealTons).toLocaleString()} 吨西瓜找到归宿`, urgency: `${urg} 片瓜田，只剩不到 3 天窗口`, plain: `全国 ${nS} 片瓜田 · ${nI + nT + nF} 处需求` };
+  const inFilter = l => typeF !== 'supply' && demandVisible(D.dIndex[l.d]);
+  const fL = typeF === 'all' ? nL : D.links.filter(inFilter).length;
+  const fDeals = typeF === 'all' ? D.links.filter(l => l.deal) : D.links.filter(l => l.deal && inFilter(l));
+  const fD = fDeals.length;
+  const fTons = fDeals.reduce((a, l) => a + Math.min(D.sIndex[l.s].tons, D.dIndex[l.d].tons), 0);
+  const FT = { individual: '个人', store: '水果店', factory: '工厂' };
+  const pre = typeF === 'all' || typeF === 'supply' ? '' : `只看${FT[typeF]} · `;
+  const supplyCap = `只看瓜农 · ${nS} 片瓜田在售`;
+  const cap = {
+    potential: typeF === 'supply' ? supplyCap : `${pre}${fL.toLocaleString()} 条潜在连线，等待被点亮`,
+    deals: typeF === 'supply' ? supplyCap : `${pre}${fD} 盏灯已点亮 · 约 ${Math.round(fTons).toLocaleString()} 吨西瓜找到归宿`,
+    urgency: `${urg} 片瓜田，只剩不到 3 天窗口`,
+    plain: `全国 ${nS} 片瓜田 · ${nI + nT + nF} 处需求`
+  };
   document.getElementById('caption').textContent = cap[mode];
   document.getElementById('subTxt').textContent = selected
     ? `${selected.name} · ${selected.city} · 潜在匹配 ${D.links.filter(l => l.s === selected.id || l.d === selected.id).length} 处`
