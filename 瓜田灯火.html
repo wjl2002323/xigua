@@ -53,6 +53,12 @@
   #card .kv{display:flex;justify-content:space-between;font-size:12px;margin-top:9px;color:#cbb4a6}
   #card .kv b{color:#f0e2cf;font-weight:600;font-variant-numeric:tabular-nums}
   #card .urgent b{color:#ff6b5e}
+  #card .mhd{font-size:10.5px;color:#b39b90;letter-spacing:2px;margin-top:14px;padding-top:10px;border-top:1px solid rgba(255,255,255,.07)}
+  #card .mrow{display:flex;align-items:center;gap:8px;min-height:40px;font-size:12px;color:#cbb4a6;cursor:pointer;border-radius:7px;padding:0 6px}
+  #card .mrow:hover{background:rgba(255,255,255,.05)}
+  #card .mrow .mn{flex:1;color:#e8d9c8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #card .mrow .mp{font-variant-numeric:tabular-nums;font-weight:600}
+  #card .mrow .mr{font-size:10px;color:#9a7f76}
   #card .btns{display:flex;gap:8px;margin-top:14px}
   #card button{flex:1;border:none;border-radius:7px;padding:12px 0;font-size:12px;letter-spacing:2px;cursor:pointer}
   #btnCall{background:#1f8a63;color:#eafff4;box-shadow:0 0 14px rgba(92,232,178,.3)}
@@ -143,6 +149,7 @@ try {
   GTAPI.ready.then(() => GTAPI.loadPosts()).then(posts => {
     if (!posts || !posts.length) return;
     mergePosts(posts);
+    scoreAllLinks();
     if (proj) { // 若投影已就绪（云端异步晚到），补算屏幕坐标并刷新
       D.supplies.concat(D.demands).forEach(p => { if (!p.xy) p.xy = proj([p.lon, p.lat]); });
       refreshStats(); seedComets();
@@ -216,6 +223,26 @@ function linkVisible(l) {
   return false;
 }
 function urgColor(days) { return days <= 3 ? '#ff4b3e' : days <= 7 ? '#ffb454' : '#5ce8b2'; }
+
+// 匹配打分（确定性 $0，与 supabase/schema.sql 预留的 links.score 同公式；V2-R4）
+function matchScore(s, d, km) {
+  const dist = Math.max(0, 1 - km / d.radiusKm);              // 距离：半径内线性衰减
+  const fit = Math.min(1, s.tons / Math.max(d.tons, 0.01));   // 量级：这片田能不能喂饱这单
+  let sc = dist * .6 + fit * .4;
+  if (s.daysLeft <= 3) sc = Math.min(1, sc * 1.15);           // 临期助推：帮瓜先出手
+  return sc;
+}
+function matchReasons(s, d, km) {
+  const r = [];
+  if (km <= d.radiusKm * .35) r.push('离得近');
+  if (s.tons >= d.tons) r.push('量够'); else if (s.tons >= d.tons * .5) r.push('量接近');
+  if (s.daysLeft <= 3) r.push('赶时间');
+  return r.length ? r : ['在收货范围内'];
+}
+function scoreAllLinks() {
+  D.links.forEach(l => { const s = D.sIndex[l.s], d = D.dIndex[l.d]; if (s && d) l.score = matchScore(s, d, l.km); });
+}
+scoreAllLinks();
 
 // 流光粒子
 const comets = [];
@@ -435,7 +462,24 @@ function openCard(p) {
       <div class="kv"><span>潜在货源</span><b>${my.length} 处${near ? ' · 最近 ' + near + ' km' : ''}</b></div>
       <div class="kv"><span>联系电话</span><b>${p.phone}</b></div>`;
   }
+  const ranked = my.map(l => {
+    const other = p.kind === 'supply' ? D.dIndex[l.d] : D.sIndex[l.s];
+    const s = p.kind === 'supply' ? p : D.sIndex[l.s];
+    const d = p.kind === 'supply' ? D.dIndex[l.d] : p;
+    return { other, km: l.km, score: l.score != null ? l.score : matchScore(s, d, l.km), reasons: matchReasons(s, d, l.km) };
+  }).filter(x => x.other).sort((a, b) => b.score - a.score).slice(0, 3);
+  if (ranked.length) {
+    html += `<div class="mhd">匹配推荐</div>` + ranked.map(x => {
+      const pct = Math.round(x.score * 100);
+      const col = pct >= 70 ? '#5ce8b2' : pct >= 40 ? '#ffb454' : '#9a7f76';
+      return `<div class="mrow" data-mid="${x.other.id}"><span class="mn">${x.other.name}</span><span class="mr">${x.km}km · ${x.reasons.join('·')}</span><span class="mp" style="color:${col}">${pct}%</span></div>`;
+    }).join('');
+  }
   cardBody.innerHTML = html;
+  cardBody.querySelectorAll('.mrow').forEach(el => el.onclick = () => {
+    const t = D.sIndex[el.dataset.mid] || D.dIndex[el.dataset.mid];
+    if (t) openCard(t);
+  });
   card.classList.add('show'); refreshStats();
 }
 document.getElementById('cardX').onclick = () => { selected = null; card.classList.remove('show'); refreshStats(); };
