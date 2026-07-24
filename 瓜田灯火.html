@@ -138,12 +138,12 @@ function mergePosts(posts) {
   posts.forEach(p => {
     if (!p || !p.lon || !p.lat || D.sIndex[p.id] || D.dIndex[p.id]) return;
     if (p.kind === 'supply') {
-      const s = { id: p.id, kind: 'supply', city: p.city, lon: p.lon, lat: p.lat, name: p.name, variety: p.variety || '麒麟', tons: +p.tons || 1, daysLeft: p.daysLeft || 7, phone: p.phone, priceWish: p.priceWish || null, photo: p.photo, mine: true };
+      const s = { id: p.id, kind: 'supply', city: p.city, lon: p.lon, lat: p.lat, name: p.name, variety: p.variety || '麒麟', tons: +p.tons || 1, daysLeft: p.daysLeft || 7, phone: p.phone, priceWish: p.priceWish || null, photo: p.photo, mine: p.mine !== false };
       D.supplies.push(s); D.sIndex[s.id] = s;
       const cands = D.demands.map(d => ({ d, km: D.distKm(s, d) })).filter(x => x.km <= x.d.radiusKm).sort((a, b) => a.km - b.km).slice(0, 4);
       cands.forEach(({ d, km }) => D.links.push({ s: s.id, d: d.id, km: Math.round(km), deal: false }));
     } else {
-      const d = { id: p.id, kind: 'demand', type: p.type || 'individual', city: p.city, lon: p.lon, lat: p.lat, name: p.name, tons: +p.tons || 1, radiusKm: p.radiusKm || 60, phone: p.phone, mine: true };
+      const d = { id: p.id, kind: 'demand', type: p.type || 'individual', city: p.city, lon: p.lon, lat: p.lat, name: p.name, tons: +p.tons || 1, radiusKm: p.radiusKm || 60, phone: p.phone, mine: p.mine !== false };
       D.demands.push(d); D.dIndex[d.id] = d;
       const cap = d.type === 'factory' ? 6 : d.type === 'store' ? 4 : 2;
       const cands = D.supplies.map(s => ({ s, km: D.distKm(d, s) })).filter(x => x.km <= d.radiusKm).sort((a, b) => a.km - b.km).slice(0, cap);
