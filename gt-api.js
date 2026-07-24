@@ -13,6 +13,7 @@
   var mode = isSupabase ? 'supabase' : 'local';
   var client = null; // 仅 supabase 模式下才会被赋值
   var cachedUserId = null; // supabase 会话 user.id 缓存，由 onAuthStateChange 维护
+  var cachedPhone = null; // supabase 会话手机号缓存（假邮箱前缀），由 onAuthStateChange 维护
 
   function loadScriptOnce(src) {
     return new Promise(function (resolve, reject) {
@@ -34,6 +35,7 @@
       // 订阅即触发一次当前会话状态，currentUserId() 因此在 ready 之后即可用。
       client.auth.onAuthStateChange(function (_event, session) {
         cachedUserId = (session && session.user && session.user.id) || null;
+        cachedPhone = (session && session.user && (session.user.email || '').split('@')[0]) || null;
       });
     }).catch(function (e) {
       console.error('[GTAPI] supabase 初始化失败，云端功能不可用', e);
@@ -222,6 +224,45 @@
     return mode === 'supabase' ? saveSupabase(post) : Promise.resolve(saveLocal(post));
   }
 
+  // ---- withdraw：撤回自己发布的点位（local 直接删；supabase 标记 closed）----
+  function withdrawLocal(post) {
+    try {
+      var list = loadLocal().filter(function (p) { return p.id !== post.id; });
+      localStorage.setItem(LOCAL_KEY, JSON.stringify(list));
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, reason: 'local-storage-error' };
+    }
+  }
+
+  function withdrawSupabase(post) {
+    return ready.then(function () {
+      if (!client) return { ok: false, reason: 'auth-required' };
+      return client.auth.getSession().then(function (sres) {
+        var session = sres && sres.data && sres.data.session;
+        if (!session) return { ok: false, reason: 'auth-required' };
+        var table = post.kind === 'supply' ? 'supplies' : 'demands';
+        return client.from(table).update({ status: 'closed' }).eq('id', post.id).select('id').then(function (r) {
+          if (r && r.error) return { ok: false, reason: r.error.message || 'update-failed' };
+          var data = (r && r.data) || [];
+          // RLS 只允许更新自己的行；越权更新会静默返回 0 行而非报错
+          if (data.length === 0) return { ok: false, reason: 'not-owner' };
+          return { ok: true };
+        });
+      });
+    }).catch(function (e) {
+      return { ok: false, reason: (e && e.message) || 'supabase-error' };
+    });
+  }
+
+  function withdrawPost(post) {
+    return mode === 'supabase' ? withdrawSupabase(post) : Promise.resolve(withdrawLocal(post));
+  }
+
+  function currentPhone() {
+    return mode === 'supabase' ? cachedPhone : null;
+  }
+
   // ---- links：供需匹配连线（km/score/是否成交）----
   function rowToLink(row) {
     return {
@@ -283,6 +324,7 @@
   window.GTAPI = {
     mode: mode, ready: ready,
     loadPosts: loadPosts, savePost: savePost,
+    withdrawPost: withdrawPost, currentPhone: currentPhone,
     ensureAuth: ensureAuth, currentUserId: currentUserId,
     loadLinks: loadLinks, markDeal: markDeal,
     getSession: getSession

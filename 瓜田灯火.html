@@ -81,6 +81,22 @@
   #loginBtn{width:100%;min-height:52px;border:none;border-radius:14px;background:#1f8a63;color:#eafff4;font-size:16px;letter-spacing:4px;cursor:pointer;box-shadow:0 0 22px rgba(92,232,178,.3)}
   #loginBtn:disabled{opacity:.6}
   #loginCard .note{font-size:11px;color:#7d625c;margin-top:12px}
+  #myFab{position:absolute;right:22px;bottom:64px;z-index:7;width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;user-select:none;box-shadow:0 4px 18px rgba(0,0,0,.5)}
+  #myFab:hover{background:rgba(20,10,7,.85)}
+  body.mobile #myFab{right:12px;bottom:190px}
+  #myPanel{position:absolute;right:22px;bottom:128px;z-index:8;width:290px;max-height:60vh;overflow-y:auto;padding:14px 14px 10px;display:none}
+  #myPanel.show{display:block}
+  body.mobile #myPanel{right:10px;left:10px;width:auto;bottom:254px}
+  #myPanel .hd{font:900 15px "Noto Serif SC","Songti SC","STSong","SimSun",serif;letter-spacing:3px;color:#f5ecdc;margin-bottom:2px}
+  #myPanel .sub{font-size:11px;color:#9a7f76;margin-bottom:10px}
+  #myPanel .mine-row{display:flex;align-items:center;gap:8px;padding:10px 6px;border-top:1px solid rgba(255,255,255,.06);font-size:12.5px;color:#cbb4a6}
+  #myPanel .mine-row .ic{flex:none;font-size:15px}
+  #myPanel .mine-row .info{flex:1;min-width:0}
+  #myPanel .mine-row .nm{color:#e8d9c8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #myPanel .mine-row .meta{font-size:10.5px;color:#9a7f76;margin-top:2px}
+  #myPanel .wbtn{flex:none;min-height:36px;padding:0 12px;border-radius:8px;border:1px solid rgba(255,107,94,.4);background:none;color:#ff8a7e;font-size:11.5px;letter-spacing:1px;cursor:pointer}
+  #myPanel .wbtn.confirm{background:rgba(255,75,62,.15);color:#ffb0a8}
+  #myPanel .empty{padding:16px 4px;font-size:12px;color:#9a7f76;text-align:center}
   body.mobile #notif{top:auto;bottom:170px;left:10px;right:10px;transform:none;text-align:center}
   body.mobile #titleTxt{font-size:15px;letter-spacing:7px}
   body.mobile #titlePlate{top:12px;padding:8px 14px;gap:8px}
@@ -146,6 +162,8 @@
 <div id="toast" class="plate"></div>
 <div id="notif" class="plate"></div>
 <div id="hint">拖动平移 · 滚轮缩放 · 点击光点看详情</div>
+<div id="myFab" class="plate" title="我的发布">👤</div>
+<div id="myPanel" class="plate"><div class="hd">我的</div><div class="sub" id="myPhone"></div><div id="myList"></div></div>
 <script src="mock-data.js"></script>
 <script src="config.js"></script>
 <script src="gt-api.js"></script>
@@ -613,9 +631,52 @@ document.getElementById('searchIn').addEventListener('keydown', e => {
   openCard(hit);
 });
 
+// 「我的」FAB
+document.getElementById('myFab').onclick = () => {
+  const p = document.getElementById('myPanel');
+  const open = p.classList.toggle('show');
+  if (open) renderMyPanel();
+};
+
 setTimeout(seedComets, 800);
 refreshStats();
 if (new URLSearchParams(location.search).has('posted')) setTimeout(() => toast('你的灯已点亮 · 电话就是你的门牌'), 600);
+// 「我的」面板（用户反馈 #5；FAB 独立清空区，点击展开自己的发布 + 逐条撤销）
+function renderMyPanel() {
+  const mine = D.supplies.filter(s => s.mine).concat(D.demands.filter(d => d.mine));
+  const ph = GTAPI.currentPhone && GTAPI.currentPhone();
+  document.getElementById('myPhone').textContent = ph ? ph + ' · ' + mine.length + ' 条发布' : (mine.length + ' 条发布');
+  const list = document.getElementById('myList');
+  if (!mine.length) { list.innerHTML = '<div class="empty">还没有发布<br>去点亮一盏灯吧 🍉</div>'; return; }
+  list.innerHTML = mine.map(p => `
+    <div class="mine-row" data-id="${p.id}" data-kind="${p.kind}">
+      <span class="ic">${p.kind === 'supply' ? '🍉' : '🛒'}</span>
+      <div class="info"><div class="nm">${p.name}</div>
+      <div class="meta">${p.city} · ${p.tons} 吨 · ${fmtAgo(p.createdAt) || ''} · 剩 ${effDays(p)} 天</div></div>
+      <button class="wbtn">撤销</button>
+    </div>`).join('');
+  list.querySelectorAll('.mine-row').forEach(row => {
+    const btn = row.querySelector('.wbtn');
+    btn.onclick = () => {
+      if (!btn.classList.contains('confirm')) { btn.classList.add('confirm'); btn.textContent = '确认撤销?'; setTimeout(() => { btn.classList.remove('confirm'); btn.textContent = '撤销'; }, 2600); return; }
+      btn.disabled = true;
+      GTAPI.withdrawPost({ kind: row.dataset.kind, id: row.dataset.id }).then(r => {
+        if (!r.ok) { btn.disabled = false; toast(r.reason === 'auth-required' ? '请先登录' : '撤销失败 · ' + (r.reason || '稍后再试')); return; }
+        removeFromMap(row.dataset.id);
+        toast('已撤销');
+        renderMyPanel(); refreshStats(); seedComets();
+      });
+    };
+  });
+}
+function removeFromMap(id) {
+  D.supplies = D.supplies.filter(s => s.id !== id);
+  D.demands = D.demands.filter(d => d.id !== id);
+  delete D.sIndex[id]; delete D.dIndex[id];
+  D.links = D.links.filter(l => l.s !== id && l.d !== id);
+  if (selected && selected.id === id) { selected = null; card.classList.remove('show'); }
+}
+
 // 站内新匹配通知（V2-R5；数据层无关 —— 云端接通后同套逻辑生效）
 function checkMyMatches() {
   const mine = D.supplies.filter(s => s.mine).concat(D.demands.filter(d => d.mine));

@@ -3,3 +3,4 @@ nohup.out
 .claude/scheduled_tasks.lock
 .gstack/
 dist/
+.edgeone/
