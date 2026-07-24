@@ -106,6 +106,7 @@
   .withUnit{position:relative}
   .withUnit .textInput{padding-right:56px}
   .withUnit .unitTag{position:absolute;right:16px;top:0;bottom:0;display:flex;align-items:center;color:var(--muted);font-size:14px;pointer-events:none}
+  .chipCustom{margin-top:12px}
 
   input[type=range]{width:100%;height:44px;accent-color:var(--accent);background:transparent}
   .rangeLabel{text-align:center;font-size:15px;color:var(--text);margin-top:4px}
@@ -238,6 +239,11 @@
           <span class="chip" data-group="days" data-value="3">3天内</span>
           <span class="chip" data-group="days" data-value="7">一周内</span>
           <span class="chip" data-group="days" data-value="14">两周内</span>
+          <span class="chip" data-group="days" data-value="custom">自定义</span>
+        </div>
+        <div id="daysCustomWrap" class="withUnit chipCustom hidden">
+          <input id="daysCustomInput" class="textInput" type="number" inputmode="numeric" min="1" max="60" placeholder="例如 20">
+          <span class="unitTag">天</span>
         </div>
       </div>
       <div class="field">
@@ -274,6 +280,19 @@
         <label class="fieldLabel">收货半径</label>
         <input id="radiusInput" type="range" min="40" max="600" step="10">
         <div class="rangeLabel"><b id="radiusVal">200</b> km · 愿意从多远拉货</div>
+      </div>
+      <div class="field">
+        <label class="fieldLabel">需求有效期 · 过期自动下架</label>
+        <div class="chips" id="validChips">
+          <span class="chip" data-group="valid" data-value="7">一周内</span>
+          <span class="chip" data-group="valid" data-value="14">两周内</span>
+          <span class="chip" data-group="valid" data-value="30">一个月</span>
+          <span class="chip" data-group="valid" data-value="custom">自定义</span>
+        </div>
+        <div id="validCustomWrap" class="withUnit chipCustom hidden">
+          <input id="validCustomInput" class="textInput" type="number" inputmode="numeric" min="1" max="60" placeholder="例如 20">
+          <span class="unitTag">天</span>
+        </div>
       </div>
       <div class="field">
         <label class="fieldLabel">怎么称呼（选填）</label>
@@ -364,9 +383,12 @@
 
   var step3 = $('step3'), s3Title = $('s3Title'), s3sell = $('s3sell'), s3buy = $('s3buy');
   var varietyChips = $('varietyChips'), daysChips = $('daysChips');
+  var daysCustomWrap = $('daysCustomWrap'), daysCustomInput = $('daysCustomInput');
   var tonsMinus = $('tonsMinus'), tonsPlus = $('tonsPlus'), tonsVal = $('tonsVal');
   var priceInput = $('priceInput'), nameInputSell = $('nameInputSell'), phoneInputSell = $('phoneInputSell');
   var qtyInput = $('qtyInput'), radiusInput = $('radiusInput'), radiusVal = $('radiusVal');
+  var validChips = $('validChips');
+  var validCustomWrap = $('validCustomWrap'), validCustomInput = $('validCustomInput');
   var nameInputBuy = $('nameInputBuy'), phoneInputBuy = $('phoneInputBuy');
   var passWrapSell = $('passWrapSell'), passInputSell = $('passInputSell');
   var passWrapBuy = $('passWrapBuy'), passInputBuy = $('passInputBuy');
@@ -628,7 +650,7 @@
   // ---------------------------------------------------------------
   // 8. STEP 3 — 详情
   // ---------------------------------------------------------------
-  var variety = '麒麟', daysLeft = 7, tons = 10;
+  var variety = '麒麟', daysLeft = 7, tons = 10, daysValid = 14;
   var photoDataUrl = null, photoBlob = null;
   var photoPickPlaceholder = photoPick.innerHTML;
 
@@ -683,7 +705,30 @@
     });
   }
   initChips(varietyChips, function(v){ variety = v; });
-  initChips(daysChips, function(v){ daysLeft = Number(v); });
+
+  // 天数类 chip 组：预设值 + "自定义"（自定义时展开内联数字输入，值在提交时校验）
+  function wireDaysChips(container, wrap, input, setter){
+    container.querySelectorAll('.chip').forEach(function(c){
+      c.addEventListener('click', function(){
+        container.querySelectorAll('.chip').forEach(function(x){ x.classList.remove('on'); });
+        c.classList.add('on');
+        if (c.dataset.value === 'custom'){
+          wrap.classList.remove('hidden');
+          input.focus();
+        } else {
+          wrap.classList.add('hidden');
+          setter(Number(c.dataset.value));
+        }
+      });
+    });
+  }
+  wireDaysChips(daysChips, daysCustomWrap, daysCustomInput, function(v){ daysLeft = v; });
+  wireDaysChips(validChips, validCustomWrap, validCustomInput, function(v){ daysValid = v; });
+
+  function isCustomDaysActive(container){
+    var on = container.querySelector('.chip.on');
+    return !!(on && on.dataset.value === 'custom');
+  }
 
   tonsMinus.addEventListener('click', function(){ tons = Math.max(1, tons - 1); tonsVal.textContent = tons; });
   tonsPlus.addEventListener('click', function(){ tons = tons + 1; tonsVal.textContent = tons; });
@@ -718,6 +763,11 @@
         radiusInput.value = radiusDefaults[buyType] || 200;
         radiusVal.textContent = radiusInput.value;
       }
+      // 默认选中：两周内
+      if (!validChips.querySelector('.chip.on')) {
+        var firstVal = validChips.querySelector('.chip[data-value="14"]');
+        firstVal.classList.add('on'); daysValid = 14;
+      }
       ctaBtn.textContent = '发布需求';
       ctaBtn.onclick = submitBuy;
     }
@@ -751,6 +801,12 @@
     if (!validPhone(phone)) { shake(phoneInputSell); toast('电话号码要 11 位哦'); return; }
     if (!tons || tons <= 0) { shake(tonsVal.parentElement); toast('可供量要大于 0'); return; }
 
+    var finalDaysLeft = daysLeft;
+    if (isCustomDaysActive(daysChips)){
+      finalDaysLeft = Number(daysCustomInput.value);
+      if (!(finalDaysLeft >= 1 && finalDaysLeft <= 60)) { shake(daysCustomInput); toast('天数 1 到 60 之间'); return; }
+    }
+
     if (GTAPI.mode === 'supabase'){
       var pass = passInputSell.value;
       if (pass.length < 6) { shake(passInputSell); toast('密码至少 6 位'); return; }
@@ -767,7 +823,7 @@
     rec.name = name || ('瓜农' + phone.slice(-4));
     rec.variety = variety;
     rec.tons = Number(tons);
-    rec.daysLeft = daysLeft;
+    rec.daysLeft = finalDaysLeft;
     var price = priceInput.value.trim();
     rec.priceWish = price ? price : null;
     rec.phone = phone;
@@ -787,6 +843,12 @@
     if (!validPhone(phone)) { shake(phoneInputBuy); toast('电话号码要 11 位哦'); return; }
     var qty = Number(qtyInput.value);
     if (!qty || qty <= 0) { shake(qtyInput); toast('填一下大概需要多少'); return; }
+
+    var finalDaysValid = daysValid;
+    if (isCustomDaysActive(validChips)){
+      finalDaysValid = Number(validCustomInput.value);
+      if (!(finalDaysValid >= 1 && finalDaysValid <= 60)) { shake(validCustomInput); toast('天数 1 到 60 之间'); return; }
+    }
 
     if (GTAPI.mode === 'supabase'){
       var pass = passInputBuy.value;
@@ -808,6 +870,7 @@
     rec.type = buyType;
     rec.tons = qty;
     rec.radiusKm = Number(radiusInput.value);
+    rec.daysValid = finalDaysValid;
     rec.phone = phone;
 
     var res = await saveRecord(rec);

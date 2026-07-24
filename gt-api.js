@@ -66,6 +66,7 @@
       lon: row.lon, lat: row.lat, variety: row.variety, tons: Number(row.tons),
       daysLeft: row.days_left, priceWish: row.price_wish, type: row.type,
       radiusKm: row.radius_km, phone: row.phone, photo: row.photo_url || undefined,
+      daysValid: row.days_valid,
       createdAt: row.created_at, mine: row.user_id === currentUserId()
     };
   }
@@ -81,6 +82,10 @@
         if ((r0 && r0.error) || (r1 && r1.error)) return [];
         var supplies = ((r0 && r0.data) || []).map(function (r) { return rowToPost(r, 'supply'); });
         var demands = ((r1 && r1.data) || []).map(function (r) { return rowToPost(r, 'demand'); });
+        // 过期点位（超过发布者设定期限）从地图消失，但不删库存 —— 仅在读取时过滤
+        var now = Date.now(), DAY = 86400000;
+        supplies = supplies.filter(function (p) { if (!p.createdAt || !p.daysLeft) return true; return (new Date(p.createdAt).getTime() + p.daysLeft * DAY) > now; });
+        demands = demands.filter(function (p) { if (!p.createdAt) return true; var dv = p.daysValid || 14; return (new Date(p.createdAt).getTime() + dv * DAY) > now; });
         return supplies.concat(demands);
       });
     }).catch(function (e) {
@@ -114,11 +119,15 @@
       if (photoUrl) row.photo_url = photoUrl;
       return row;
     }
-    return {
+    var demandRow = {
       name: post.name, type: post.type, city: post.city, county_code: countyCode,
       lon: post.lon, lat: post.lat, tons: post.tons, radius_km: post.radiusKm,
       phone: post.phone
     };
+    // days_valid 列由对应 migration 增加；仅在真的有设定时携带，
+    // 未跑迁移的库也能正常发布（有效期功能自然降级）
+    if (post.daysValid) demandRow.days_valid = post.daysValid;
+    return demandRow;
   }
 
   function saveSupabase(post) {
@@ -140,7 +149,20 @@
           var countyCode = (post.county && post.county.c) || null;
           var row = buildRow(post, countyCode, photoUrl);
           return client.from(table).insert(row).then(function (r) {
-            if (r && r.error) return { ok: false, reason: r.error.message || 'insert-failed' };
+            if (r && r.error) {
+              var errMsg = r.error.message || '';
+              // days_valid 列可能尚未跑 migration；命中该报错时剥离字段重试一次，
+              // 不让整条发布因为一个可选列失败
+              if (/days_valid/.test(errMsg) && row.days_valid) {
+                delete row.days_valid;
+                return client.from(table).insert(row).then(function (r2) {
+                  if (r2 && r2.error) return { ok: false, reason: r2.error.message || 'insert-failed' };
+                  var result2 = { ok: true, warn: 'days-valid-skipped' };
+                  return result2;
+                });
+              }
+              return { ok: false, reason: errMsg || 'insert-failed' };
+            }
             var result = { ok: true };
             if (photoWarn) result.warn = photoWarn;
             return result;

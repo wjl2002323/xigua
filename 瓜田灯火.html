@@ -156,12 +156,12 @@ function mergePosts(posts) {
   posts.forEach(p => {
     if (!p || !p.lon || !p.lat || D.sIndex[p.id] || D.dIndex[p.id]) return;
     if (p.kind === 'supply') {
-      const s = { id: p.id, kind: 'supply', city: p.city, lon: p.lon, lat: p.lat, name: p.name, variety: p.variety || '麒麟', tons: +p.tons || 1, daysLeft: p.daysLeft || 7, phone: p.phone, priceWish: p.priceWish || null, photo: p.photo, mine: p.mine !== false };
+      const s = { id: p.id, kind: 'supply', city: p.city, lon: p.lon, lat: p.lat, name: p.name, variety: p.variety || '麒麟', tons: +p.tons || 1, daysLeft: p.daysLeft || 7, phone: p.phone, priceWish: p.priceWish || null, photo: p.photo, createdAt: p.createdAt, mine: p.mine !== false };
       D.supplies.push(s); D.sIndex[s.id] = s;
       const cands = D.demands.map(d => ({ d, km: D.distKm(s, d) })).filter(x => x.km <= x.d.radiusKm).sort((a, b) => a.km - b.km).slice(0, 4);
       cands.forEach(({ d, km }) => D.links.push({ s: s.id, d: d.id, km: Math.round(km), deal: false }));
     } else {
-      const d = { id: p.id, kind: 'demand', type: p.type || 'individual', city: p.city, lon: p.lon, lat: p.lat, name: p.name, tons: +p.tons || 1, radiusKm: p.radiusKm || 60, phone: p.phone, mine: p.mine !== false };
+      const d = { id: p.id, kind: 'demand', type: p.type || 'individual', city: p.city, lon: p.lon, lat: p.lat, name: p.name, tons: +p.tons || 1, radiusKm: p.radiusKm || 60, phone: p.phone, createdAt: p.createdAt, daysValid: p.daysValid, mine: p.mine !== false };
       D.demands.push(d); D.dIndex[d.id] = d;
       const cap = d.type === 'factory' ? 6 : d.type === 'store' ? 4 : 2;
       const cands = D.supplies.map(s => ({ s, km: D.distKm(d, s) })).filter(x => x.km <= d.radiusKm).sort((a, b) => a.km - b.km).slice(0, cap);
@@ -260,12 +260,26 @@ function linkVisible(l) {
 }
 function urgColor(days) { return days <= 3 ? '#ff4b3e' : days <= 7 ? '#ffb454' : '#5ce8b2'; }
 
+// 建立时间与有效剩余天数（仅云端行做递减换算；mock 演示数据保持原 daysLeft）
+function isCloudRow(p) { return String(p.id).length > 20; }
+function fmtAgo(iso) {
+  if (!iso) return '';
+  const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  return d <= 0 ? '今天' : d === 1 ? '昨天' : d + ' 天前';
+}
+function effDays(p) {
+  const base = p.kind === 'supply' ? (p.daysLeft || 7) : (p.daysValid || 14);
+  if (!isCloudRow(p) || !p.createdAt) return base;
+  const used = Math.floor((Date.now() - new Date(p.createdAt).getTime()) / 86400000);
+  return Math.max(0, base - used);
+}
+
 // 匹配打分（确定性 $0，与 supabase/schema.sql 预留的 links.score 同公式；V2-R4）
 function matchScore(s, d, km) {
   const dist = Math.max(0, 1 - km / d.radiusKm);              // 距离：半径内线性衰减
   const fit = Math.min(1, s.tons / Math.max(d.tons, 0.01));   // 量级：这片田能不能喂饱这单
   let sc = dist * .6 + fit * .4;
-  if (s.daysLeft <= 3) sc = Math.min(1, sc * 1.15);           // 临期助推：帮瓜先出手
+  if (effDays(s) <= 3) sc = Math.min(1, sc * 1.15);           // 临期助推：帮瓜先出手
   return sc;
 }
 function matchReasons(s, d, km) {
@@ -397,9 +411,9 @@ function frame(now) {
   if (!demandTypeFilter) D.supplies.forEach(s => {
     let col = 'rgba(92,232,178,', r = Math.min(6.5, 1.2 + Math.sqrt(s.tons) * .34) * kk;
     if (mode === 'urgency') {
-      const c = urgColor(s.daysLeft);
+      const c = urgColor(effDays(s));
       col = c === '#ff4b3e' ? 'rgba(255,75,62,' : c === '#ffb454' ? 'rgba(255,180,84,' : 'rgba(92,232,178,';
-      if (s.daysLeft <= 3 && !RM) r *= 1 + .28 * Math.sin(tm * 5 + s.xy[0]);
+      if (effDays(s) <= 3 && !RM) r *= 1 + .28 * Math.sin(tm * 5 + s.xy[0]);
     }
     drawPt(s, col, r, mode !== 'plain');
   });
@@ -454,7 +468,7 @@ function refreshStats() {
     nT = D.demands.filter(d => d.type === 'store').length, nF = D.demands.filter(d => d.type === 'factory').length,
     nL = D.links.length, nD = D.links.filter(l => l.deal).length;
   const dealTons = D.links.filter(l => l.deal).reduce((a, l) => a + Math.min(D.sIndex[l.s].tons, D.dIndex[l.d].tons), 0);
-  const urg = D.supplies.filter(s => s.daysLeft <= 3).length;
+  const urg = D.supplies.filter(s => effDays(s) <= 3).length;
   document.getElementById('nS').textContent = nS; document.getElementById('nI').textContent = nI;
   document.getElementById('nT').textContent = nT; document.getElementById('nF').textContent = nF;
   document.getElementById('nL').textContent = nL; document.getElementById('nD').textContent = nD;
@@ -489,15 +503,18 @@ function openCard(p) {
   let html;
   if (p.kind === 'supply') {
     html = `<h3>${p.name}</h3><div class="tag">${p.city} · ${p.variety}西瓜 · 供给</div>
+      <div class="kv"><span>发布于</span><b>${fmtAgo(p.createdAt) || '—'}</b></div>
       <div class="kv"><span>可供量</span><b>${p.tons} 吨</b></div>
-      <div class="kv ${p.daysLeft <= 3 ? 'urgent' : ''}"><span>售卖窗口</span><b>剩 ${p.daysLeft} 天</b></div>
+      <div class="kv ${effDays(p) <= 3 ? 'urgent' : ''}"><span>售卖窗口</span><b>剩 ${effDays(p)} 天</b></div>
       <div class="kv"><span>期望价</span><b>${p.priceWish ? p.priceWish + ' 元/斤' : '面议'}</b></div>
       <div class="kv"><span>潜在买家</span><b>${my.length} 处${near ? ' · 最近 ' + near + ' km' : ''}</b></div>
       <div class="kv"><span>联系电话</span><b>${p.phone}</b></div>${p.photo ? `<img class="cphoto" src="${p.photo}" alt="瓜田照片">` : ''}`;
   } else {
     html = `<h3>${p.name}</h3><div class="tag">${p.city} · ${CT[p.type]} · 需求</div>
+      <div class="kv"><span>发布于</span><b>${fmtAgo(p.createdAt) || '—'}</b></div>
       <div class="kv"><span>需求量</span><b>${p.tons} 吨</b></div>
       <div class="kv"><span>收货半径</span><b>${p.radiusKm} km</b></div>
+      <div class="kv ${effDays(p) <= 3 ? 'urgent' : ''}"><span>需求有效期</span><b>剩 ${effDays(p)} 天</b></div>
       <div class="kv"><span>潜在货源</span><b>${my.length} 处${near ? ' · 最近 ' + near + ' km' : ''}</b></div>
       <div class="kv"><span>联系电话</span><b>${p.phone}</b></div>`;
   }
