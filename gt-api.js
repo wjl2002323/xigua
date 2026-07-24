@@ -247,10 +247,22 @@
     return mode === 'supabase' ? markDealSupabase(supplyId, demandId) : Promise.resolve({ ok: true });
   }
 
+  // ---- 会话探针：登录门用它判断「7 天内免登录」是否还成立 ----
+  function getSession() {
+    if (mode !== 'supabase') return Promise.resolve(null);
+    return ready.then(function () {
+      if (!client) return null;
+      return client.auth.getSession().then(function (r) {
+        return (r && r.data && r.data.session) || null;
+      });
+    }).catch(function () { return null; });
+  }
+
   window.GTAPI = {
     mode: mode, ready: ready,
     loadPosts: loadPosts, savePost: savePost,
     ensureAuth: ensureAuth, currentUserId: currentUserId,
-    loadLinks: loadLinks, markDeal: markDeal
+    loadLinks: loadLinks, markDeal: markDeal,
+    getSession: getSession
   };
 })();

@@ -71,6 +71,16 @@
   #toast{position:absolute;left:50%;top:84px;transform:translateX(-50%);z-index:9;padding:8px 18px;font-size:12px;letter-spacing:2px;color:#ffe9c9;display:none}
   #notif{position:absolute;left:50%;top:84px;transform:translateX(-50%);z-index:8;padding:12px 22px;font-size:13px;letter-spacing:2px;color:#ffe9c9;display:none;cursor:pointer;border-color:rgba(255,213,150,.35);box-shadow:0 0 18px rgba(255,213,150,.15)}
   #notif:hover{background:rgba(20,10,7,.8)}
+  #loginGate{position:fixed;inset:0;z-index:30;display:none;align-items:center;justify-content:center;background:rgba(5,2,3,.45);backdrop-filter:blur(2.5px)}
+  #loginGate.show{display:flex}
+  #loginCard{width:min(340px,88vw);padding:26px 22px;text-align:center}
+  #loginCard h2{margin:0;font:900 22px "Noto Serif SC","Songti SC","STSong","SimSun",serif;letter-spacing:6px;color:#efe3d1}
+  #loginCard .sub{font-size:12.5px;color:#9a7f76;margin:10px 0 18px;letter-spacing:1px}
+  #loginCard input{display:block;width:100%;box-sizing:border-box;background:#160a0b;border:1px solid rgba(255,77,94,.22);border-radius:12px;color:#e8d9c8;font-size:16px;min-height:50px;padding:0 14px;margin-bottom:12px;outline:none}
+  #loginCard input:focus{border-color:rgba(92,232,178,.45)}
+  #loginBtn{width:100%;min-height:52px;border:none;border-radius:14px;background:#1f8a63;color:#eafff4;font-size:16px;letter-spacing:4px;cursor:pointer;box-shadow:0 0 22px rgba(92,232,178,.3)}
+  #loginBtn:disabled{opacity:.6}
+  #loginCard .note{font-size:11px;color:#7d625c;margin-top:12px}
   body.mobile #notif{top:auto;bottom:170px;left:10px;right:10px;transform:none;text-align:center}
   body.mobile #titleTxt{font-size:15px;letter-spacing:7px}
   body.mobile #titlePlate{top:12px;padding:8px 14px;gap:8px}
@@ -125,6 +135,14 @@
 <div id="card" class="plate"><span id="cardX">✕</span><div id="cardBody"></div>
   <div class="btns"><button id="btnCall">拨打电话</button><button id="btnDeal">标记已成交</button></div>
 </div>
+<div id="loginGate"><div id="loginCard" class="plate">
+  <h2>瓜田灯火</h2>
+  <div class="sub">手机号进入 · 第一次填就是注册</div>
+  <input id="loginPhone" type="tel" placeholder="手机号" maxlength="11">
+  <input id="loginPass" type="password" placeholder="密码（至少 6 位）">
+  <button id="loginBtn">进入瓜田灯火</button>
+  <div class="note">登录一次，7 天内免登录 · 电话只在你发布时展示</div>
+</div></div>
 <div id="toast" class="plate"></div>
 <div id="notif" class="plate"></div>
 <div id="hint">拖动平移 · 滚轮缩放 · 点击光点看详情</div>
@@ -233,7 +251,7 @@ function sx(p) { return tf.applyX(p.xy[0]); }
 function sy(p) { return tf.applyY(p.xy[1]); }
 function demandVisible(d) { return typeF === 'all' || typeF === d.type; }
 function linkVisible(l) {
-  if (typeF === 'supply') return false;
+  if (typeF !== 'all') return false;
   const d = D.dIndex[l.d];
   if (!demandVisible(d)) return false;
   if (mode === 'deals') return l.deal;
@@ -375,7 +393,8 @@ function frame(now) {
     ctx.fillStyle = col + al + ')'; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
   };
   const kk = Math.sqrt(tf.k) * (mode === 'plain' ? .7 : 1);
-  D.supplies.forEach(s => {
+  const demandTypeFilter = typeF === 'individual' || typeF === 'store' || typeF === 'factory';
+  if (!demandTypeFilter) D.supplies.forEach(s => {
     let col = 'rgba(92,232,178,', r = Math.min(6.5, 1.2 + Math.sqrt(s.tons) * .34) * kk;
     if (mode === 'urgency') {
       const c = urgColor(s.daysLeft);
@@ -447,9 +466,11 @@ function refreshStats() {
   const fTons = fDeals.reduce((a, l) => a + Math.min(D.sIndex[l.s].tons, D.dIndex[l.d].tons), 0);
   const pre = typeF === 'all' || typeF === 'supply' ? '' : `只看${CT[typeF]} · `;
   const supplyCap = `只看瓜农 · ${nS} 片瓜田在售`;
+  const demandTypeFilter = typeF === 'individual' || typeF === 'store' || typeF === 'factory';
+  const demandTypeCap = `${pre}${typeF === 'individual' ? nI : typeF === 'store' ? nT : nF} 处需求`;
   const cap = {
-    potential: typeF === 'supply' ? supplyCap : `${pre}${fL.toLocaleString()} 条潜在连线，等待被点亮`,
-    deals: typeF === 'supply' ? supplyCap : `${pre}${fD} 盏灯已点亮 · 约 ${Math.round(fTons).toLocaleString()} 吨西瓜找到归宿`,
+    potential: typeF === 'supply' ? supplyCap : demandTypeFilter ? demandTypeCap : `${pre}${fL.toLocaleString()} 条潜在连线，等待被点亮`,
+    deals: typeF === 'supply' ? supplyCap : demandTypeFilter ? demandTypeCap : `${pre}${fD} 盏灯已点亮 · 约 ${Math.round(fTons).toLocaleString()} 吨西瓜找到归宿`,
     urgency: `${urg} 片瓜田，只剩不到 3 天窗口`,
     plain: `全国 ${nS} 片瓜田 · ${nI + nT + nF} 处需求`
   };
@@ -542,7 +563,7 @@ cv.addEventListener('click', e => {
   const r = cv.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
   let best = null, bd = 14;
   const test = p => { const d = Math.hypot(sx(p) - mx, sy(p) - my); if (d < bd) { bd = d; best = p; } };
-  D.supplies.forEach(test);
+  if (typeF === 'all' || typeF === 'supply') D.supplies.forEach(test);
   if (typeF !== 'supply') D.demands.forEach(d => demandVisible(d) && test(d));
   if (best) openCard(best); else { selected = null; card.classList.remove('show'); refreshStats(); }
 });
@@ -602,6 +623,45 @@ function checkMyMatches() {
     if (t) openCard(t);
   };
 }
+
+// 登录门（V2-R7；仅云端模式生效——本地模式直接放行）
+function initLoginGate() {
+  if (typeof GTAPI === 'undefined' || GTAPI.mode !== 'supabase') return;
+  GTAPI.ready.then(() => GTAPI.getSession()).then(sess => {
+    if (sess) return; // 7 天内免登录：supabase 持久化会话
+    const g = document.getElementById('loginGate');
+    g.classList.add('show');
+    document.getElementById('loginBtn').onclick = async () => {
+      const phone = document.getElementById('loginPhone').value.trim();
+      const pass = document.getElementById('loginPass').value;
+      if (!/^1\d{10}$/.test(phone)) { toast('手机号要 11 位哦'); return; }
+      if (pass.length < 6) { toast('密码至少 6 位'); return; }
+      const btn = document.getElementById('loginBtn'); btn.disabled = true; btn.textContent = '进入中…';
+      const r = await GTAPI.ensureAuth(phone, pass);
+      btn.disabled = false; btn.textContent = '进入瓜田灯火';
+      if (r.ok) {
+        g.classList.remove('show');
+        toast(r.reason === 'registered' ? '欢迎来到瓜田灯火' : '欢迎回来');
+        GTAPI.loadPosts().then(posts => { /* mine 旗标随新会话刷新 */
+          if (posts && posts.length) {
+            D.supplies = D.supplies.filter(s => String(s.id).length <= 20);
+            D.demands = D.demands.filter(d => String(d.id).length <= 20);
+            D.links = D.links.filter(l => !l.cloud && String(l.s).length <= 20 && String(l.d).length <= 20);
+            // mergePosts 靠 sIndex/dIndex 判重跳过已入索引的 id —— 云端旧条目残留会让新会话的
+            // mine 旗标刷新失效，先清掉云端 id（长度 > 20）再重新并入
+            Object.keys(D.sIndex).forEach(k => { if (String(k).length > 20) delete D.sIndex[k]; });
+            Object.keys(D.dIndex).forEach(k => { if (String(k).length > 20) delete D.dIndex[k]; });
+            mergePosts(posts);
+            return GTAPI.loadLinks().then(cl => { (cl || []).forEach(l => D.links.push(l)); scoreAllLinks(); checkMyMatches(); refreshStats(); });
+          }
+        }).catch(() => {});
+      } else {
+        toast(r.reason === 'wrong-password' ? '密码不对 · 新号码请换个密码重试' : '登录失败 · ' + (r.reason || '请重试'));
+      }
+    };
+  }).catch(() => {});
+}
+initLoginGate();
 </script>
 </body>
 </html>
