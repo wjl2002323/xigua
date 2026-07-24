@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>发布 · 瓜田灯火</title>
+<style>
+  :root{
+    --bg:#050203; --text:#e8d9c8; --muted:#9a7f76;
+    --mint:#5ce8b2; --mint-btn:#1f8a63; --mint-btn-h:#25a173;
+    --amber:#ffb454; --amber-btn:#b26a1d; --amber-btn-h:#c67a26;
+    --plate-bg:rgba(9,4,6,.62); --plate-border:rgba(255,255,255,.07);
+    --serif:"Noto Serif SC","Songti SC","STSong","SimSun",serif;
+    --sans:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+    --accent:var(--mint); --accent-btn:var(--mint-btn); --accent-btn-h:var(--mint-btn-h);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:16px;-webkit-font-smoothing:antialiased}
+  body{padding-bottom:96px}
+  body.kind-buy{--accent:var(--amber);--accent-btn:var(--amber-btn);--accent-btn-h:var(--amber-btn-h)}
+  h1,h2,h3{margin:0;font-family:var(--serif)}
+  .hidden{display:none!important}
+  a{color:var(--mint);text-decoration:none}
+
+  /* ---- top bar ---- */
+  .topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px;padding:10px 12px;background:linear-gradient(180deg,rgba(5,2,3,.96),rgba(5,2,3,.8) 70%,transparent)}
+  .backBtn{appearance:none;border:none;background:none;color:var(--text);font-size:17px;font-weight:600;min-height:48px;min-width:48px;display:flex;align-items:center;justify-content:center;padding:0 6px;border-radius:10px;cursor:pointer}
+  .backBtn:active{background:rgba(255,255,255,.08)}
+  .dots{flex:1;display:flex;justify-content:center;gap:10px}
+  .dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.16);transition:background .2s,box-shadow .2s}
+  .dot.done{background:rgba(255,255,255,.4)}
+  .dot.active{background:var(--accent);box-shadow:0 0 8px var(--accent)}
+  .topbar-spacer{width:48px}
+
+  /* ---- layout ---- */
+  main{max-width:520px;margin:0 auto;padding:6px 18px 24px}
+  .step{padding-top:4px}
+  .stepTitle{font-size:22px;font-weight:900;letter-spacing:1px;color:var(--text);margin:10px 2px 18px}
+  .stepHint{font-size:13px;color:var(--muted);margin:-12px 2px 16px;letter-spacing:.5px}
+
+  /* ---- step1: identity cards ---- */
+  .bigcard{min-height:120px;border-radius:16px;padding:20px 22px;margin-bottom:14px;display:flex;flex-direction:column;justify-content:center;cursor:pointer;border:1px solid transparent;transition:transform .12s,border-color .15s}
+  .bigcard:active{transform:scale(.97)}
+  .bigcard.mint{background:rgba(31,138,99,.16);border-color:rgba(92,232,178,.28)}
+  .bigcard.amber{background:rgba(178,106,29,.16);border-color:rgba(255,180,84,.28)}
+  .bigcard.selected.mint{border-color:var(--mint);box-shadow:0 0 0 1px var(--mint) inset,0 0 18px rgba(92,232,178,.25)}
+  .bigcard.selected.amber{border-color:var(--amber);box-shadow:0 0 0 1px var(--amber) inset,0 0 18px rgba(255,180,84,.25)}
+  .bigcard-emoji{font-size:32px;line-height:1;margin-bottom:8px}
+  .bigcard-title{font:900 20px var(--serif);letter-spacing:2px;color:#f5ecdc}
+  .bigcard-sub{font-size:14px;color:var(--muted);margin-top:5px}
+
+  .subcard{min-height:80px;border-radius:14px;padding:14px 20px;margin-bottom:12px;display:flex;flex-direction:column;justify-content:center;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.09);cursor:pointer;transition:transform .12s,border-color .15s}
+  .subcard:active{transform:scale(.97)}
+  .subcard.selected{border-color:var(--amber);background:rgba(255,180,84,.1)}
+  .subcard-title{font:700 18px var(--serif);color:var(--text)}
+  .subcard-sub{font-size:13px;color:var(--muted);margin-top:3px}
+
+  .mapLink{display:block;text-align:center;margin-top:22px;font-size:13px;color:var(--muted);letter-spacing:1px}
+  .mapLink:active{color:var(--text)}
+
+  /* ---- step2: location ---- */
+  .ctaBig{width:100%;min-height:56px;border:none;border-radius:14px;font-size:18px;font-weight:700;letter-spacing:1px;background:var(--accent-btn);color:#eafff4;cursor:pointer;transition:background .15s,transform .1s}
+  .ctaBig:active{transform:scale(.98);background:var(--accent-btn-h)}
+  .ctaBig[disabled]{opacity:.35;pointer-events:none}
+  .linkBtn{display:block;width:100%;text-align:center;background:none;border:none;color:var(--muted);font-size:15px;padding:16px 0;cursor:pointer;min-height:48px}
+  .linkBtn:active{color:var(--text)}
+
+  .geoConfirm{margin-top:14px;padding:18px;border-radius:14px;background:var(--plate-bg);border:1px solid var(--plate-border)}
+  .geoConfirm-text{font:700 18px var(--serif);color:#f5ecdc;margin-bottom:14px;letter-spacing:.5px}
+  .geoConfirm-text .ok{color:var(--mint)}
+
+  .divider{display:flex;align-items:center;gap:12px;margin:22px 0 14px;color:var(--muted);font-size:12px;letter-spacing:2px}
+  .divider::before,.divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.09)}
+
+  .selLabel{display:block;font-size:13px;color:var(--muted);letter-spacing:1px;margin:0 2px 8px}
+  .bigSelect{width:100%;min-height:52px;font-size:17px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);color:var(--text);padding:0 14px;margin-bottom:16px;font-family:var(--sans)}
+  .bigSelect:focus{outline:2px solid rgba(255,233,201,.5);outline-offset:1px}
+  .bigSelect option{background:#150a0a;color:var(--text)}
+
+  /* ---- step3: details ---- */
+  .field{margin-bottom:22px}
+  .fieldLabel{display:block;font-size:14px;color:var(--muted);letter-spacing:1px;margin-bottom:10px}
+  .fieldLabel .req{color:#ff9a7c}
+  .chips{display:flex;flex-wrap:wrap;gap:10px}
+  .chip{min-height:48px;padding:0 18px;display:flex;align-items:center;border-radius:24px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:var(--text);font-size:15px;cursor:pointer;user-select:none}
+  .chip.on{border-color:var(--accent);color:#fff;background:rgba(255,255,255,.09)}
+  body.kind-sell .chip.on{box-shadow:0 0 0 1px var(--mint) inset}
+  body.kind-buy .chip.on{box-shadow:0 0 0 1px var(--amber) inset}
+
+  .stepper{display:flex;align-items:center;gap:14px}
+  .stepper button{width:52px;height:52px;flex:none;border-radius:12px;font-size:26px;line-height:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:var(--text);cursor:pointer}
+  .stepper button:active{background:rgba(255,255,255,.14)}
+  .stepper .val{flex:1;text-align:center;font-size:24px;font-weight:800;font-variant-numeric:tabular-nums}
+  .stepper .unit{color:var(--muted);font-size:14px;margin-left:4px;font-weight:400}
+
+  .textInput{width:100%;min-height:52px;font-size:17px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);color:var(--text);padding:0 16px;font-family:var(--sans)}
+  .textInput::placeholder{color:#7a615c}
+  .textInput:focus{outline:2px solid rgba(255,233,201,.5);outline-offset:1px}
+  .withUnit{position:relative}
+  .withUnit .textInput{padding-right:56px}
+  .withUnit .unitTag{position:absolute;right:16px;top:0;bottom:0;display:flex;align-items:center;color:var(--muted);font-size:14px;pointer-events:none}
+
+  input[type=range]{width:100%;height:44px;accent-color:var(--accent);background:transparent}
+  .rangeLabel{text-align:center;font-size:15px;color:var(--text);margin-top:4px}
+  .rangeLabel b{color:var(--accent);font-weight:800}
+
+  .shake{animation:shake .45s}
+  @keyframes shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}30%,50%,70%{transform:translateX(-8px)}40%,60%{transform:translateX(8px)}}
+
+  /* ---- fixed bottom cta ---- */
+  .ctaBar{position:fixed;left:0;right:0;bottom:0;z-index:20;padding:12px 18px calc(14px + env(safe-area-inset-bottom));background:linear-gradient(0deg,rgba(5,2,3,.98),rgba(5,2,3,.85) 75%,transparent);max-width:520px;margin:0 auto}
+
+  /* ---- toast ---- */
+  .toast{position:fixed;left:50%;top:20px;transform:translateX(-50%);z-index:40;padding:10px 18px;font-size:13px;letter-spacing:1px;color:#ffe9c9;background:var(--plate-bg);border:1px solid var(--plate-border);border-radius:10px;backdrop-filter:blur(10px);display:none;max-width:88vw;text-align:center}
+
+  /* ---- success flash ---- */
+  .flash{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:#050203;opacity:0;pointer-events:none;transition:opacity .2s}
+  .flash.show{opacity:1;pointer-events:auto}
+  .flash-emoji{font-size:60px;text-align:center;margin-bottom:16px}
+  .flash-text{font:900 25px var(--serif);color:#f5ecdc;letter-spacing:3px;text-align:center}
+  body.kind-sell .flash-text{color:#eafff4;text-shadow:0 0 24px rgba(92,232,178,.5)}
+  body.kind-buy .flash-text{color:#fff3e0;text-shadow:0 0 24px rgba(255,180,84,.5)}
+
+  .loadErr{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:60;padding:22px 26px;background:var(--plate-bg);border:1px solid var(--plate-border);border-radius:14px;font-size:15px;color:var(--text);text-align:center;max-width:80vw}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <button id="backBtn" class="backBtn" type="button" aria-label="返回">‹ 返回</button>
+  <div class="dots"><span class="dot" data-d="1"></span><span class="dot" data-d="2"></span><span class="dot" data-d="3"></span></div>
+  <div class="topbar-spacer"></div>
+</div>
+
+<main id="main">
+
+  <!-- STEP 1 -->
+  <section id="step1" class="step">
+    <div id="s1root" class="s1phase">
+      <h1 class="stepTitle">我是……</h1>
+      <div id="cardSell" class="bigcard mint">
+        <div class="bigcard-emoji">🍉</div>
+        <div class="bigcard-title">我要卖瓜</div>
+        <div class="bigcard-sub">我是瓜农，有瓜要卖</div>
+      </div>
+      <div id="cardBuy" class="bigcard amber">
+        <div class="bigcard-emoji">🛒</div>
+        <div class="bigcard-title">我要收瓜</div>
+        <div class="bigcard-sub">我要买瓜 · 进货 · 加工</div>
+      </div>
+      <a class="mapLink" href="瓜田灯火.html">查看地图 ›</a>
+    </div>
+
+    <div id="s1sub" class="s1phase hidden">
+      <h1 class="stepTitle">你是……</h1>
+      <div id="subIndividual" class="subcard" data-type="individual">
+        <div class="subcard-title">个人</div>
+        <div class="subcard-sub">家里吃</div>
+      </div>
+      <div id="subStore" class="subcard" data-type="store">
+        <div class="subcard-title">水果店</div>
+        <div class="subcard-sub">门店补货</div>
+      </div>
+      <div id="subFactory" class="subcard" data-type="factory">
+        <div class="subcard-title">工厂</div>
+        <div class="subcard-sub">加工大宗</div>
+      </div>
+      <a class="mapLink" href="瓜田灯火.html">查看地图 ›</a>
+    </div>
+  </section>
+
+  <!-- STEP 2 -->
+  <section id="step2" class="step hidden">
+    <h1 class="stepTitle">你在哪儿？</h1>
+    <div id="s2geo">
+      <button id="btnLocate" class="ctaBig" type="button">📍 一键定位（推荐）</button>
+      <div id="geoConfirm" class="geoConfirm hidden">
+        <div class="geoConfirm-text" id="geoConfirmText"></div>
+        <button id="btnUseGeo" class="ctaBig" type="button">✓ 使用这个位置</button>
+        <button id="btnRedo" class="linkBtn" type="button">重新选择</button>
+      </div>
+      <button id="btnManualToggle" class="linkBtn" type="button">或者手动选择位置</button>
+    </div>
+
+    <div id="s2manual" class="hidden">
+      <div class="divider">手动选择</div>
+      <label class="selLabel" for="selProvince">省份</label>
+      <select id="selProvince" class="bigSelect"><option value="">请选择省份</option></select>
+      <div id="cityWrap">
+        <label class="selLabel" for="selCity">城市</label>
+        <select id="selCity" class="bigSelect"><option value="">请选择城市</option></select>
+      </div>
+      <label class="selLabel" for="selCounty">区县</label>
+      <select id="selCounty" class="bigSelect"><option value="">请选择区县</option></select>
+    </div>
+    <a class="mapLink" href="瓜田灯火.html">查看地图 ›</a>
+  </section>
+
+  <!-- STEP 3 -->
+  <section id="step3" class="step hidden">
+    <h1 class="stepTitle" id="s3Title">最后几步</h1>
+
+    <div id="s3sell" class="hidden">
+      <div class="field">
+        <label class="fieldLabel">什么品种</label>
+        <div class="chips" id="varietyChips">
+          <span class="chip" data-group="variety" data-value="麒麟">麒麟</span>
+          <span class="chip" data-group="variety" data-value="8424">8424</span>
+          <span class="chip" data-group="variety" data-value="黑美人">黑美人</span>
+          <span class="chip" data-group="variety" data-value="甜王">甜王</span>
+          <span class="chip" data-group="variety" data-value="硒砂瓜">硒砂瓜</span>
+          <span class="chip" data-group="variety" data-value="特小凤">特小凤</span>
+        </div>
+      </div>
+      <div class="field">
+        <label class="fieldLabel">可供量</label>
+        <div class="stepper">
+          <button id="tonsMinus" type="button">－</button>
+          <div class="val"><span id="tonsVal">10</span><span class="unit">吨</span></div>
+          <button id="tonsPlus" type="button">＋</button>
+        </div>
+      </div>
+      <div class="field">
+        <label class="fieldLabel">还能卖多久</label>
+        <div class="chips" id="daysChips">
+          <span class="chip" data-group="days" data-value="3">3天内</span>
+          <span class="chip" data-group="days" data-value="7">一周内</span>
+          <span class="chip" data-group="days" data-value="14">两周内</span>
+        </div>
+      </div>
+      <div class="field">
+        <label class="fieldLabel">期望价（选填）</label>
+        <div class="withUnit">
+          <input id="priceInput" class="textInput" type="number" inputmode="decimal" min="0" step="0.1" placeholder="不填就是面议">
+          <span class="unitTag">元/斤</span>
+        </div>
+      </div>
+      <div class="field">
+        <label class="fieldLabel">怎么称呼（选填）</label>
+        <input id="nameInputSell" class="textInput" type="text" placeholder="例如：张师傅">
+      </div>
+      <div class="field">
+        <label class="fieldLabel">联系电话 <span class="req">必填</span></label>
+        <input id="phoneInputSell" class="textInput" type="tel" inputmode="numeric" maxlength="11" placeholder="买家会直接打给你">
+      </div>
+    </div>
+
+    <div id="s3buy" class="hidden">
+      <div class="field">
+        <label class="fieldLabel">需求量</label>
+        <div class="withUnit">
+          <input id="qtyInput" class="textInput" type="number" inputmode="decimal" min="0" step="0.1" placeholder="">
+          <span class="unitTag">吨</span>
+        </div>
+      </div>
+      <div class="field">
+        <label class="fieldLabel">收货半径</label>
+        <input id="radiusInput" type="range" min="40" max="600" step="10">
+        <div class="rangeLabel"><b id="radiusVal">200</b> km · 愿意从多远拉货</div>
+      </div>
+      <div class="field">
+        <label class="fieldLabel">怎么称呼（选填）</label>
+        <input id="nameInputBuy" class="textInput" type="text" placeholder="例如：王老板">
+      </div>
+      <div class="field">
+        <label class="fieldLabel">联系电话 <span class="req">必填</span></label>
+        <input id="phoneInputBuy" class="textInput" type="tel" inputmode="numeric" maxlength="11" placeholder="卖家会直接打给你">
+      </div>
+    </div>
+    <a class="mapLink" href="瓜田灯火.html">查看地图 ›</a>
+  </section>
+
+</main>
+
+<div id="ctaBar" class="ctaBar hidden">
+  <button id="ctaBtn" class="ctaBig" type="button"></button>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<div id="flash" class="flash">
+  <div>
+    <div class="flash-emoji" id="flashEmoji">🏮</div>
+    <div class="flash-text" id="flashText">你的灯已点亮</div>
+  </div>
+</div>
+
+<div id="loadErr" class="loadErr hidden">数据加载失败，请刷新</div>
+
+<script>
+(function(){
+  'use strict';
+
+  // ---------------------------------------------------------------
+  // 0. 省份切分表（用于把 p 字段 "山东省潍坊市" 拆成 省+市）
+  // ---------------------------------------------------------------
+  var PROVINCES = ['北京市','天津市','上海市','重庆市',
+    '河北省','山西省','辽宁省','吉林省','黑龙江省','江苏省','浙江省','安徽省','福建省','江西省',
+    '山东省','河南省','湖北省','湖南省','广东省','海南省','四川省','贵州省','云南省','陕西省',
+    '甘肃省','青海省','台湾省',
+    '内蒙古自治区','广西壮族自治区','西藏自治区','宁夏回族自治区','新疆维吾尔自治区',
+    '香港特别行政区','澳门特别行政区'].sort(function(a,b){ return b.length - a.length; });
+  var DIRECT = '__DIRECT__'; // 省直辖县级（无地级市层级）占位 key
+
+  function splitPC(p){
+    for (var i = 0; i < PROVINCES.length; i++){
+      if (p.indexOf(PROVINCES[i]) === 0) return [PROVINCES[i], p.slice(PROVINCES[i].length)];
+    }
+    return [p, '']; // 兜底：整段当省份
+  }
+
+  // ---------------------------------------------------------------
+  // 1. 状态
+  // ---------------------------------------------------------------
+  var counties = null;          // 原始数组
+  var provMap = null;           // 省 -> {_min, cities:{cityKey -> {_min, list:[county...]}}}
+  var view = 's1root';          // s1root | s1sub | s2 | s3
+  var kind = null;              // 'sell' | 'buy'
+  var buyType = null;           // 'individual' | 'store' | 'factory'
+  var selectedCounty = null;    // {n,p,c,lon,lat}
+  var usedGPS = false;
+  var gpsLon = null, gpsLat = null;
+  var currentCountyList = [];   // 手动选择当前可选区县
+  var modeParam = new URLSearchParams(location.search).get('mode');
+
+  // ---------------------------------------------------------------
+  // 2. DOM 引用
+  // ---------------------------------------------------------------
+  var $ = function(id){ return document.getElementById(id); };
+  var backBtn = $('backBtn'), dotEls = document.querySelectorAll('.dot');
+  var step1 = $('step1'), s1root = $('s1root'), s1sub = $('s1sub');
+  var cardSell = $('cardSell'), cardBuy = $('cardBuy');
+  var subIndividual = $('subIndividual'), subStore = $('subStore'), subFactory = $('subFactory');
+
+  var step2 = $('step2'), s2geo = $('s2geo'), btnLocate = $('btnLocate');
+  var geoConfirm = $('geoConfirm'), geoConfirmText = $('geoConfirmText');
+  var btnUseGeo = $('btnUseGeo'), btnRedo = $('btnRedo'), btnManualToggle = $('btnManualToggle');
+  var s2manual = $('s2manual');
+  var selProvince = $('selProvince'), selCity = $('selCity'), selCounty = $('selCounty'), cityWrap = $('cityWrap');
+
+  var step3 = $('step3'), s3Title = $('s3Title'), s3sell = $('s3sell'), s3buy = $('s3buy');
+  var varietyChips = $('varietyChips'), daysChips = $('daysChips');
+  var tonsMinus = $('tonsMinus'), tonsPlus = $('tonsPlus'), tonsVal = $('tonsVal');
+  var priceInput = $('priceInput'), nameInputSell = $('nameInputSell'), phoneInputSell = $('phoneInputSell');
+  var qtyInput = $('qtyInput'), radiusInput = $('radiusInput'), radiusVal = $('radiusVal');
+  var nameInputBuy = $('nameInputBuy'), phoneInputBuy = $('phoneInputBuy');
+
+  var ctaBar = $('ctaBar'), ctaBtn = $('ctaBtn');
+  var toastEl = $('toast'), toastTimer = null;
+  var flash = $('flash'), flashEmoji = $('flashEmoji'), flashText = $('flashText');
+  var loadErr = $('loadErr');
+
+  // ---------------------------------------------------------------
+  // 3. 小工具
+  // ---------------------------------------------------------------
+  function toast(msg){
+    toastEl.textContent = msg; toastEl.style.display = 'block';
+    clearTimeout(toastTimer); toastTimer = setTimeout(function(){ toastEl.style.display = 'none'; }, 2000);
+  }
+  function shake(el){ el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); }
+  function jitter(v){ return v + (Math.random() * 0.04 - 0.02); }
+
+  function setAccent(k){
+    document.body.classList.toggle('kind-sell', k === 'sell');
+    document.body.classList.toggle('kind-buy', k === 'buy');
+  }
+
+  // ---------------------------------------------------------------
+  // 4. 加载区县数据
+  // ---------------------------------------------------------------
+  fetch('vendor/counties.json').then(function(r){ return r.json(); }).then(function(list){
+    counties = list;
+    provMap = buildMaps(list);
+    fillProvinceSelect();
+  }).catch(function(){
+    loadErr.classList.remove('hidden');
+  });
+
+  function buildMaps(list){
+    var map = {};
+    for (var i = 0; i < list.length; i++){
+      var c = list[i];
+      var pc = splitPC(c.p);
+      var prov = pc[0], cityName = pc[1];
+      var cityKey = cityName || DIRECT;
+      if (!map[prov]) map[prov] = { _min: c.c, cities: {} };
+      if (c.c < map[prov]._min) map[prov]._min = c.c;
+      if (!map[prov].cities[cityKey]) map[prov].cities[cityKey] = { _min: c.c, list: [], label: cityName || '省直辖' };
+      if (c.c < map[prov].cities[cityKey]._min) map[prov].cities[cityKey]._min = c.c;
+      map[prov].cities[cityKey].list.push(c);
+    }
+    for (var prov2 in map){
+      for (var ck in map[prov2].cities) map[prov2].cities[ck].list.sort(function(a,b){ return a.c - b.c; });
+    }
+    return map;
+  }
+
+  function sortedKeys(obj){
+    return Object.keys(obj).sort(function(a,b){ return obj[a]._min - obj[b]._min; });
+  }
+
+  function fillProvinceSelect(){
+    var provs = sortedKeys(provMap);
+    var html = '<option value="">请选择省份</option>';
+    for (var i = 0; i < provs.length; i++) html += '<option value="' + provs[i] + '">' + provs[i] + '</option>';
+    selProvince.innerHTML = html;
+  }
+
+  function fillCitySelect(prov){
+    var cities = provMap[prov].cities;
+    var keys = sortedKeys(cities);
+    var html = '<option value="">请选择城市</option>';
+    for (var i = 0; i < keys.length; i++) html += '<option value="' + keys[i] + '">' + cities[keys[i]].label + '</option>';
+    selCity.innerHTML = html;
+  }
+
+  function fillCountySelectFromList(list){
+    currentCountyList = list;
+    var html = '<option value="">请选择区县</option>';
+    for (var i = 0; i < list.length; i++) html += '<option value="' + i + '">' + list[i].n + '</option>';
+    selCounty.innerHTML = html;
+  }
+
+  function resetCitySelect(){ selCity.innerHTML = '<option value="">请选择城市</option>'; }
+  function resetCountySelect(){ currentCountyList = []; selCounty.innerHTML = '<option value="">请选择区县</option>'; }
+
+  selProvince.addEventListener('change', function(){
+    var prov = selProvince.value;
+    resetCitySelect(); resetCountySelect(); updateManualNextState();
+    if (!prov) { cityWrap.classList.remove('hidden'); return; }
+    var cities = provMap[prov].cities;
+    var keys = Object.keys(cities);
+    if (keys.length === 1 && keys[0] === DIRECT){
+      // 直辖市 / 无地级市层级：省份之后直接是区县
+      cityWrap.classList.add('hidden');
+      fillCountySelectFromList(cities[DIRECT].list);
+    } else {
+      cityWrap.classList.remove('hidden');
+      fillCitySelect(prov);
+    }
+    updateManualNextState();
+  });
+
+  selCity.addEventListener('change', function(){
+    resetCountySelect(); updateManualNextState();
+    var prov = selProvince.value, cityKey = selCity.value;
+    if (!prov || !cityKey) return;
+    fillCountySelectFromList(provMap[prov].cities[cityKey].list);
+    updateManualNextState();
+  });
+
+  selCounty.addEventListener('change', function(){ updateManualNextState(); });
+
+  function updateManualNextState(){
+    if (view !== 's2') return;
+    var idx = selCounty.value;
+    if (idx === '' || idx === undefined) { ctaBar.classList.add('hidden'); return; }
+    ctaBar.classList.remove('hidden');
+    ctaBtn.textContent = '下一步';
+    ctaBtn.disabled = false;
+    ctaBtn.onclick = function(){
+      var c = currentCountyList[Number(idx)];
+      selectedCounty = c; usedGPS = false; gpsLon = null; gpsLat = null;
+      goStep3();
+    };
+  }
+
+  // ---------------------------------------------------------------
+  // 5. 视图切换
+  // ---------------------------------------------------------------
+  function render(){
+    step1.classList.toggle('hidden', view !== 's1root' && view !== 's1sub');
+    s1root.classList.toggle('hidden', view !== 's1root');
+    s1sub.classList.toggle('hidden', view !== 's1sub');
+    step2.classList.toggle('hidden', view !== 's2');
+    step3.classList.toggle('hidden', view !== 's3');
+
+    var stepNum = (view === 's1root' || view === 's1sub') ? 1 : (view === 's2' ? 2 : 3);
+    dotEls.forEach(function(d){
+      var n = Number(d.dataset.d);
+      d.classList.toggle('active', n === stepNum);
+      d.classList.toggle('done', n < stepNum);
+    });
+
+    if (view === 's3') renderStep3();
+    else if (view === 's2') { ctaBar.classList.add('hidden'); resetStep2UI(); }
+    else ctaBar.classList.add('hidden');
+
+    window.scrollTo(0, 0);
+  }
+
+  function resetStep2UI(){
+    // 每次进入 step2 都从"定位方式选择"开始，不残留上次的手动展开状态
+    geoConfirm.classList.add('hidden');
+    s2geo.classList.remove('hidden');
+    s2manual.classList.add('hidden');
+    btnLocate.classList.remove('hidden');
+    btnManualToggle.classList.remove('hidden');
+  }
+
+  function goS1Root(){ view = 's1root'; render(); }
+  function goS1Sub(){ view = 's1sub'; render(); }
+  function goStep2(){ view = 's2'; render(); }
+  function goStep3(){ view = 's3'; render(); }
+
+  backBtn.addEventListener('click', function(){
+    if (view === 's1root') { location.href = '瓜田灯火.html'; return; }
+    if (view === 's1sub') {
+      if (modeParam === 'buy') { location.href = '瓜田灯火.html'; } else { goS1Root(); }
+      return;
+    }
+    if (view === 's2') {
+      if (modeParam === 'sell') { location.href = '瓜田灯火.html'; }
+      else if (kind === 'buy') { goS1Sub(); }
+      else { goS1Root(); }
+      return;
+    }
+    if (view === 's3') { goStep2(); return; }
+  });
+
+  // ---------------------------------------------------------------
+  // 6. STEP 1 — 身份
+  // ---------------------------------------------------------------
+  cardSell.addEventListener('click', function(){
+    kind = 'sell'; buyType = null; setAccent('sell');
+    cardSell.classList.add('selected'); cardBuy.classList.remove('selected');
+    goStep2();
+  });
+  cardBuy.addEventListener('click', function(){
+    kind = 'buy'; setAccent('buy');
+    cardBuy.classList.add('selected'); cardSell.classList.remove('selected');
+    goS1Sub();
+  });
+  function pickBuyType(t){
+    buyType = t; kind = 'buy'; setAccent('buy');
+    [subIndividual, subStore, subFactory].forEach(function(el){ el.classList.remove('selected'); });
+    ({individual: subIndividual, store: subStore, factory: subFactory})[t].classList.add('selected');
+    goStep2();
+  }
+  subIndividual.addEventListener('click', function(){ pickBuyType('individual'); });
+  subStore.addEventListener('click', function(){ pickBuyType('store'); });
+  subFactory.addEventListener('click', function(){ pickBuyType('factory'); });
+
+  // ---------------------------------------------------------------
+  // 7. STEP 2 — 位置
+  // ---------------------------------------------------------------
+  function nearestCounty(lon, lat){
+    if (!counties || !counties.length) return null;
+    var best = null, bd = Infinity;
+    for (var i = 0; i < counties.length; i++){
+      var c = counties[i];
+      var dx = c.lon - lon, dy = c.lat - lat;
+      var d = dx * dx + dy * dy;
+      if (d < bd) { bd = d; best = c; }
+    }
+    return best;
+  }
+
+  btnLocate.addEventListener('click', function(){
+    if (!navigator.geolocation){
+      toast('没拿到定位，手动选一下就好');
+      openManual();
+      return;
+    }
+    btnLocate.textContent = '定位中…';
+    navigator.geolocation.getCurrentPosition(function(pos){
+      btnLocate.textContent = '📍 一键定位（推荐）';
+      if (!counties || !counties.length){ toast('数据还没加载好，手动选一下'); openManual(); return; }
+      var lon = pos.coords.longitude, lat = pos.coords.latitude;
+      var c = nearestCounty(lon, lat);
+      if (!c) { toast('没拿到定位，手动选一下就好'); openManual(); return; }
+      gpsLon = lon; gpsLat = lat;
+      geoConfirmText.innerHTML = c.p + c.n + ' <span class="ok">✓</span>';
+      btnUseGeo.onclick = function(){
+        selectedCounty = c; usedGPS = true;
+        goStep3();
+      };
+      s2geo.querySelector('#btnLocate').classList.add('hidden');
+      btnManualToggle.classList.add('hidden');
+      geoConfirm.classList.remove('hidden');
+      selectedCounty = c; // 供"重新选择"之前也留一份，便于容错
+    }, function(){
+      btnLocate.textContent = '📍 一键定位（推荐）';
+      toast('没拿到定位，手动选一下就好');
+      openManual();
+    }, { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 });
+  });
+
+  btnRedo.addEventListener('click', function(){
+    geoConfirm.classList.add('hidden');
+    btnLocate.classList.remove('hidden');
+    btnManualToggle.classList.remove('hidden');
+  });
+
+  function openManual(){
+    s2manual.classList.remove('hidden');
+    btnManualToggle.classList.add('hidden');
+  }
+  btnManualToggle.addEventListener('click', openManual);
+
+  // ---------------------------------------------------------------
+  // 8. STEP 3 — 详情
+  // ---------------------------------------------------------------
+  var variety = '麒麟', daysLeft = 7, tons = 10;
+
+  function initChips(container, onPick){
+    container.querySelectorAll('.chip').forEach(function(c){
+      c.addEventListener('click', function(){
+        container.querySelectorAll('.chip').forEach(function(x){ x.classList.remove('on'); });
+        c.classList.add('on');
+        onPick(c.dataset.value);
+      });
+    });
+  }
+  initChips(varietyChips, function(v){ variety = v; });
+  initChips(daysChips, function(v){ daysLeft = Number(v); });
+
+  tonsMinus.addEventListener('click', function(){ tons = Math.max(1, tons - 1); tonsVal.textContent = tons; });
+  tonsPlus.addEventListener('click', function(){ tons = tons + 1; tonsVal.textContent = tons; });
+
+  var radiusDefaults = { individual: 60, store: 200, factory: 420 };
+  var qtyPlaceholders = { individual: '例如 0.1', store: '例如 5', factory: '例如 200' };
+
+  radiusInput.addEventListener('input', function(){ radiusVal.textContent = radiusInput.value; });
+
+  function renderStep3(){
+    var isSell = kind === 'sell';
+    s3sell.classList.toggle('hidden', !isSell);
+    s3buy.classList.toggle('hidden', isSell);
+    s3Title.textContent = isSell ? '把瓜的情况告诉大家' : '你需要多少瓜';
+
+    if (isSell){
+      // 默认选中：麒麟 + 一周内
+      if (!varietyChips.querySelector('.chip.on')) {
+        var firstV = varietyChips.querySelector('.chip[data-value="麒麟"]');
+        firstV.classList.add('on'); variety = '麒麟';
+      }
+      if (!daysChips.querySelector('.chip.on')) {
+        var firstD = daysChips.querySelector('.chip[data-value="7"]');
+        firstD.classList.add('on'); daysLeft = 7;
+      }
+      tonsVal.textContent = tons;
+      ctaBtn.textContent = '点亮我的瓜田';
+      ctaBtn.onclick = submitSell;
+    } else {
+      qtyInput.placeholder = qtyPlaceholders[buyType] || '';
+      if (!radiusInput.dataset.touched){
+        radiusInput.value = radiusDefaults[buyType] || 200;
+        radiusVal.textContent = radiusInput.value;
+      }
+      ctaBtn.textContent = '发布需求';
+      ctaBtn.onclick = submitBuy;
+    }
+    ctaBar.classList.remove('hidden');
+    ctaBtn.disabled = false;
+  }
+  radiusInput.addEventListener('input', function(){ radiusInput.dataset.touched = '1'; });
+
+  function phoneOf(el){ return el.value.trim(); }
+  function validPhone(p){ return /^1\d{10}$/.test(p); }
+
+  function resolveLonLat(){
+    if (usedGPS && gpsLon !== null && gpsLat !== null) return { lon: gpsLon, lat: gpsLat };
+    return { lon: jitter(selectedCounty.lon), lat: jitter(selectedCounty.lat) };
+  }
+
+  function baseRecord(recKind){
+    var ll = resolveLonLat();
+    return {
+      id: 'u_' + Date.now().toString(36),
+      kind: recKind,
+      city: selectedCounty.n,
+      county: { n: selectedCounty.n, p: selectedCounty.p, c: selectedCounty.c },
+      lon: ll.lon, lat: ll.lat,
+      createdAt: new Date().toISOString()
+    };
+  }
+
+  function submitSell(){
+    var phone = phoneOf(phoneInputSell);
+    if (!validPhone(phone)) { shake(phoneInputSell); toast('电话号码要 11 位哦'); return; }
+    if (!tons || tons <= 0) { shake(tonsVal.parentElement); toast('可供量要大于 0'); return; }
+    var rec = baseRecord('supply');
+    var name = nameInputSell.value.trim();
+    rec.name = name || ('瓜农' + phone.slice(-4));
+    rec.variety = variety;
+    rec.tons = Number(tons);
+    rec.daysLeft = daysLeft;
+    var price = priceInput.value.trim();
+    rec.priceWish = price ? price : null;
+    rec.phone = phone;
+    saveRecord(rec);
+    showFlash('🏮', '你的灯已点亮');
+  }
+
+  function submitBuy(){
+    var phone = phoneOf(phoneInputBuy);
+    if (!validPhone(phone)) { shake(phoneInputBuy); toast('电话号码要 11 位哦'); return; }
+    var qty = Number(qtyInput.value);
+    if (!qty || qty <= 0) { shake(qtyInput); toast('填一下大概需要多少'); return; }
+    var rec = baseRecord('demand');
+    var name = nameInputBuy.value.trim();
+    var defaultName = buyType === 'individual' ? ('买家' + phone.slice(-4))
+      : buyType === 'store' ? (selectedCounty.n + '水果店')
+      : (selectedCounty.n + '工厂');
+    rec.name = name || defaultName;
+    rec.type = buyType;
+    rec.tons = qty;
+    rec.radiusKm = Number(radiusInput.value);
+    rec.phone = phone;
+    saveRecord(rec);
+    showFlash('📡', '已发布 · 正在为你连线');
+  }
+
+  function saveRecord(rec){
+    var key = 'GT_USER_POSTS';
+    var list = [];
+    try { list = JSON.parse(localStorage.getItem(key) || '[]'); } catch(e){ list = []; }
+    list.push(rec);
+    localStorage.setItem(key, JSON.stringify(list));
+  }
+
+  function showFlash(emoji, text){
+    flashEmoji.textContent = emoji;
+    flashText.textContent = text;
+    flash.classList.add('show');
+    setTimeout(function(){ location.href = '瓜田灯火.html?posted=1'; }, 600);
+  }
+
+  // ---------------------------------------------------------------
+  // 9. 启动
+  // ---------------------------------------------------------------
+  if (modeParam === 'sell') { kind = 'sell'; setAccent('sell'); view = 's2'; }
+  else if (modeParam === 'buy') { kind = 'buy'; setAccent('buy'); view = 's1sub'; }
+  render();
+
+})();
+</script>
+</body>
+</html>
