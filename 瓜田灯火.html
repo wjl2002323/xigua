@@ -67,6 +67,9 @@
   #cardX:hover{color:#e8d9c8}
   #hint{position:absolute;right:22px;bottom:24px;z-index:4;font-size:10.5px;letter-spacing:2px;color:#9a7f76}
   #toast{position:absolute;left:50%;top:84px;transform:translateX(-50%);z-index:9;padding:8px 18px;font-size:12px;letter-spacing:2px;color:#ffe9c9;display:none}
+  #notif{position:absolute;left:50%;top:84px;transform:translateX(-50%);z-index:8;padding:12px 22px;font-size:13px;letter-spacing:2px;color:#ffe9c9;display:none;cursor:pointer;border-color:rgba(255,213,150,.35);box-shadow:0 0 18px rgba(255,213,150,.15)}
+  #notif:hover{background:rgba(20,10,7,.8)}
+  body.mobile #notif{top:auto;bottom:170px;left:10px;right:10px;transform:none;text-align:center}
   body.mobile #titleTxt{font-size:15px;letter-spacing:7px}
   body.mobile #titlePlate{top:12px;padding:8px 14px;gap:8px}
   body.mobile #seal{width:26px;height:26px;font-size:14px}
@@ -121,6 +124,7 @@
   <div class="btns"><button id="btnCall">拨打电话</button><button id="btnDeal">标记已成交</button></div>
 </div>
 <div id="toast" class="plate"></div>
+<div id="notif" class="plate"></div>
 <div id="hint">拖动平移 · 滚轮缩放 · 点击光点看详情</div>
 <script src="mock-data.js"></script>
 <script src="config.js"></script>
@@ -150,6 +154,7 @@ try {
     if (!posts || !posts.length) return;
     mergePosts(posts);
     scoreAllLinks();
+    checkMyMatches();
     if (proj) { // 若投影已就绪（云端异步晚到），补算屏幕坐标并刷新
       D.supplies.concat(D.demands).forEach(p => { if (!p.xy) p.xy = proj([p.lon, p.lat]); });
       refreshStats(); seedComets();
@@ -547,6 +552,30 @@ document.getElementById('searchIn').addEventListener('keydown', e => {
 setTimeout(seedComets, 800);
 refreshStats();
 if (new URLSearchParams(location.search).has('posted')) setTimeout(() => toast('你的灯已点亮 · 电话就是你的门牌'), 600);
+// 站内新匹配通知（V2-R5；数据层无关 —— 云端接通后同套逻辑生效）
+function checkMyMatches() {
+  const mine = D.supplies.filter(s => s.mine).concat(D.demands.filter(d => d.mine));
+  if (!mine.length) return;
+  const myLinks = D.links.filter(l => (D.sIndex[l.s] && D.sIndex[l.s].mine) || (D.dIndex[l.d] && D.dIndex[l.d].mine));
+  if (!myLinks.length) return;
+  let seen;
+  try { seen = new Set(JSON.parse(localStorage.getItem('GT_SEEN_MATCHES') || '[]')); } catch (e) { seen = new Set(); }
+  const fresh = myLinks.filter(l => !seen.has(l.s + ':' + l.d));
+  if (!fresh.length) return;
+  const counts = {};
+  fresh.forEach(l => { const k = (D.sIndex[l.s] && D.sIndex[l.s].mine) ? l.s : l.d; counts[k] = (counts[k] || 0) + 1; });
+  const topId = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
+  const n = document.getElementById('notif');
+  n.textContent = `🏮 你有 ${fresh.length} 个新匹配 · 点我看`;
+  const delay = new URLSearchParams(location.search).has('posted') ? 2600 : 900;
+  setTimeout(() => { n.style.display = 'block'; }, delay);
+  n.onclick = () => {
+    localStorage.setItem('GT_SEEN_MATCHES', JSON.stringify(myLinks.map(l => l.s + ':' + l.d)));
+    n.style.display = 'none';
+    const t = D.sIndex[topId] || D.dIndex[topId];
+    if (t) openCard(t);
+  };
+}
 </script>
 </body>
 </html>
