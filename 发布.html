@@ -287,6 +287,8 @@
 
 <div id="loadErr" class="loadErr hidden">数据加载失败，请刷新</div>
 
+<script src="config.js"></script>
+<script src="gt-api.js"></script>
 <script>
 (function(){
   'use strict';
@@ -676,7 +678,7 @@
     };
   }
 
-  function submitSell(){
+  async function submitSell(){
     var phone = phoneOf(phoneInputSell);
     if (!validPhone(phone)) { shake(phoneInputSell); toast('电话号码要 11 位哦'); return; }
     if (!tons || tons <= 0) { shake(tonsVal.parentElement); toast('可供量要大于 0'); return; }
@@ -689,11 +691,12 @@
     var price = priceInput.value.trim();
     rec.priceWish = price ? price : null;
     rec.phone = phone;
-    saveRecord(rec);
-    showFlash('🏮', '你的灯已点亮');
+    var res = await saveRecord(rec);
+    if (res && res.ok) { showFlash('🏮', '你的灯已点亮'); }
+    else { toast('需要登录才能发布（云端模式）'); }
   }
 
-  function submitBuy(){
+  async function submitBuy(){
     var phone = phoneOf(phoneInputBuy);
     if (!validPhone(phone)) { shake(phoneInputBuy); toast('电话号码要 11 位哦'); return; }
     var qty = Number(qtyInput.value);
@@ -708,16 +711,13 @@
     rec.tons = qty;
     rec.radiusKm = Number(radiusInput.value);
     rec.phone = phone;
-    saveRecord(rec);
-    showFlash('📡', '已发布 · 正在为你连线');
+    var res = await saveRecord(rec);
+    if (res && res.ok) { showFlash('📡', '已发布 · 正在为你连线'); }
+    else { toast('需要登录才能发布（云端模式）'); }
   }
 
   function saveRecord(rec){
-    var key = 'GT_USER_POSTS';
-    var list = [];
-    try { list = JSON.parse(localStorage.getItem(key) || '[]'); } catch(e){ list = []; }
-    list.push(rec);
-    localStorage.setItem(key, JSON.stringify(list));
+    return GTAPI.savePost(rec);
   }
 
   function showFlash(emoji, text){

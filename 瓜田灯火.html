@@ -117,11 +117,12 @@
 <div id="toast" class="plate"></div>
 <div id="hint">拖动平移 · 滚轮缩放 · 点击光点看详情</div>
 <script src="mock-data.js"></script>
+<script src="config.js"></script>
+<script src="gt-api.js"></script>
 <script>
 const D = window.GTDATA;
-// 用户发布（localStorage，V2-R2 本地闭环；V2-R3 换 Supabase）
-try {
-  const posts = JSON.parse(localStorage.getItem('GT_USER_POSTS') || '[]');
+// 用户发布（GTAPI 数据层：local 模式=localStorage，行为与之前一致；supabase 模式见 gt-api.js）
+function mergePosts(posts) {
   posts.forEach(p => {
     if (!p || !p.lon || !p.lat || D.sIndex[p.id] || D.dIndex[p.id]) return;
     if (p.kind === 'supply') {
@@ -137,7 +138,17 @@ try {
       cands.forEach(({ s, km }) => D.links.push({ s: s.id, d: d.id, km: Math.round(km), deal: false }));
     }
   });
-} catch (e) { /* 本地数据损坏则忽略 */ }
+}
+try {
+  GTAPI.ready.then(() => GTAPI.loadPosts()).then(posts => {
+    if (!posts || !posts.length) return;
+    mergePosts(posts);
+    if (proj) { // 若投影已就绪（云端异步晚到），补算屏幕坐标并刷新
+      D.supplies.concat(D.demands).forEach(p => { if (!p.xy) p.xy = proj([p.lon, p.lat]); });
+      refreshStats(); seedComets();
+    }
+  }).catch(() => {});
+} catch (e) { /* GTAPI 未就绪则忽略，页面按无用户发布数据渲染 */ }
 const mobileParam = new URLSearchParams(location.search).has('mobile');
 const mobileMQ = matchMedia('(max-width: 640px)');
 const isMobile = () => mobileParam || mobileMQ.matches;
