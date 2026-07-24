@@ -321,12 +321,89 @@
     }).catch(function () { return null; });
   }
 
+  // ---- 反馈层：意见反馈 + 管理员处理（纯 supabase，local 模式一律不可用）----
+  function feedbackStatus() {
+    if (mode !== 'supabase') return Promise.resolve({ available: false, isAdmin: false, unhandled: 0 });
+    return ready.then(function () {
+      if (!client) return { available: false, isAdmin: false, unhandled: 0 };
+      // 普通 select 而非 head-count：某些版本 head:true 对缺表不填 error，会误判可用
+      return client.from('feedbacks').select('id,handled').eq('handled', false)
+        .then(function (r) {
+          if (r && r.error) return { available: false, isAdmin: false, unhandled: 0 };
+          var unhandled = ((r && r.data) || []).length;
+          return client.rpc('is_admin').then(function (r2) {
+            var isAdmin = !!(r2 && !r2.error && r2.data === true);
+            return { available: true, isAdmin: isAdmin, unhandled: unhandled };
+          }).catch(function () {
+            return { available: true, isAdmin: false, unhandled: unhandled };
+          });
+        });
+    }).catch(function (e) {
+      console.error('[GTAPI] feedbackStatus(supabase) 失败', e);
+      return { available: false, isAdmin: false, unhandled: 0 };
+    });
+  }
+
+  function sendFeedback(content) {
+    return getSession().then(function (session) {
+      if (!session) return { ok: false, reason: 'auth-required' };
+      return ready.then(function () {
+        if (!client) return { ok: false, reason: 'auth-required' };
+        var row = { content: String(content).slice(0, 2000) };
+        return client.from('feedbacks').insert(row).then(function (r) {
+          if (r && r.error) return { ok: false, reason: r.error.message || 'insert-failed' };
+          return { ok: true };
+        });
+      });
+    }).catch(function (e) {
+      return { ok: false, reason: (e && e.message) || 'supabase-error' };
+    });
+  }
+
+  function rowToFeedback(row) {
+    return {
+      id: row.id, content: row.content, phone: row.phone,
+      handled: !!row.handled, createdAt: row.created_at
+    };
+  }
+
+  function listFeedback() {
+    return ready.then(function () {
+      if (!client) return [];
+      return client.from('feedbacks').select('*').order('created_at', { ascending: false }).limit(50)
+        .then(function (r) {
+          if (r && r.error) return [];
+          return ((r && r.data) || []).map(rowToFeedback);
+        });
+    }).catch(function (e) {
+      console.error('[GTAPI] listFeedback(supabase) 失败', e);
+      return [];
+    });
+  }
+
+  function markFeedbackHandled(id) {
+    return ready.then(function () {
+      if (!client) return { ok: false, reason: 'auth-required' };
+      return client.from('feedbacks').update({ handled: true }).eq('id', id).select('id').then(function (r) {
+        if (r && r.error) return { ok: false, reason: r.error.message || 'update-failed' };
+        var data = (r && r.data) || [];
+        // RLS 只允许管理员更新；非管理员越权更新会静默返回 0 行而非报错
+        if (data.length === 0) return { ok: false, reason: 'not-admin' };
+        return { ok: true };
+      });
+    }).catch(function (e) {
+      return { ok: false, reason: (e && e.message) || 'supabase-error' };
+    });
+  }
+
   window.GTAPI = {
     mode: mode, ready: ready,
     loadPosts: loadPosts, savePost: savePost,
     withdrawPost: withdrawPost, currentPhone: currentPhone,
     ensureAuth: ensureAuth, currentUserId: currentUserId,
     loadLinks: loadLinks, markDeal: markDeal,
-    getSession: getSession
+    getSession: getSession,
+    feedbackStatus: feedbackStatus, sendFeedback: sendFeedback,
+    listFeedback: listFeedback, markFeedbackHandled: markFeedbackHandled
   };
 })();
