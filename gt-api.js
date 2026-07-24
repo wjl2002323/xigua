@@ -200,9 +200,57 @@
     return mode === 'supabase' ? saveSupabase(post) : Promise.resolve(saveLocal(post));
   }
 
+  // ---- links：供需匹配连线（km/score/是否成交）----
+  function rowToLink(row) {
+    return {
+      s: row.supply_id, d: row.demand_id, km: row.km,
+      score: row.score != null ? Number(row.score) : undefined,
+      deal: !!row.deal, dealAt: row.deal_at || undefined, cloud: true
+    };
+  }
+
+  function loadLinksSupabase() {
+    return ready.then(function () {
+      if (!client) return [];
+      return client.from('links').select('supply_id,demand_id,km,score,deal,deal_at').then(function (r) {
+        if (r && r.error) return [];
+        return ((r && r.data) || []).map(rowToLink);
+      });
+    }).catch(function (e) {
+      console.error('[GTAPI] loadLinks(supabase) 失败', e);
+      return [];
+    });
+  }
+
+  function loadLinks() {
+    return mode === 'supabase' ? loadLinksSupabase() : Promise.resolve([]);
+  }
+
+  function markDealSupabase(supplyId, demandId) {
+    return ready.then(function () {
+      if (!client) return { ok: false, reason: 'auth-required' };
+      return client.auth.getSession().then(function (sres) {
+        var session = sres && sres.data && sres.data.session;
+        if (!session) return { ok: false, reason: 'auth-required' };
+        return client.rpc('mark_deal', { p_supply: supplyId, p_demand: demandId }).then(function (r) {
+          if (r && r.error) return { ok: false, reason: (r.error.message || 'rpc-failed').slice(0, 60) };
+          if (r && r.data === true) return { ok: true };
+          return { ok: false, reason: 'not-owner' };
+        });
+      });
+    }).catch(function (e) {
+      return { ok: false, reason: (e && e.message) || 'supabase-error' };
+    });
+  }
+
+  function markDeal(supplyId, demandId) {
+    return mode === 'supabase' ? markDealSupabase(supplyId, demandId) : Promise.resolve({ ok: true });
+  }
+
   window.GTAPI = {
     mode: mode, ready: ready,
     loadPosts: loadPosts, savePost: savePost,
-    ensureAuth: ensureAuth, currentUserId: currentUserId
+    ensureAuth: ensureAuth, currentUserId: currentUserId,
+    loadLinks: loadLinks, markDeal: markDeal
   };
 })();

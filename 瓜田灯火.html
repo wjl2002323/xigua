@@ -152,14 +152,25 @@ function mergePosts(posts) {
   });
 }
 try {
-  GTAPI.ready.then(() => GTAPI.loadPosts()).then(posts => {
-    if (!posts || !posts.length) return;
-    mergePosts(posts);
-    scoreAllLinks();
-    checkMyMatches();
-    if (proj) { // 若投影已就绪（云端异步晚到），补算屏幕坐标并刷新
-      D.supplies.concat(D.demands).forEach(p => { if (!p.xy) p.xy = proj([p.lon, p.lat]); });
-      refreshStats(); seedComets();
+  const isCloudId = id => typeof id === 'string' && id.length > 20;
+  GTAPI.ready.then(() => Promise.all([GTAPI.loadPosts(), GTAPI.loadLinks()])).then(([posts, clinks]) => {
+    if (posts && posts.length) mergePosts(posts);
+    if (clinks && clinks.length) {
+      // 云↔云连线以服务端为准：去掉前端算的同对，再并入
+      const ckeys = new Set(clinks.map(l => l.s + ':' + l.d));
+      for (let i = D.links.length - 1; i >= 0; i--) {
+        const l = D.links[i];
+        if ((isCloudId(l.s) && isCloudId(l.d)) || ckeys.has(l.s + ':' + l.d)) D.links.splice(i, 1);
+      }
+      clinks.forEach(l => D.links.push(l));
+    }
+    if ((posts && posts.length) || (clinks && clinks.length)) {
+      scoreAllLinks();
+      checkMyMatches();
+      if (proj) { // 若投影已就绪（云端异步晚到），补算屏幕坐标并刷新
+        D.supplies.concat(D.demands).forEach(p => { if (!p.xy) p.xy = proj([p.lon, p.lat]); });
+        refreshStats(); seedComets();
+      }
     }
   }).catch(() => {});
 } catch (e) { /* GTAPI 未就绪则忽略，页面按无用户发布数据渲染 */ }
@@ -506,7 +517,18 @@ document.getElementById('btnCall').onclick = () => {
 document.getElementById('btnDeal').onclick = () => {
   if (!selected) return;
   const my = D.links.filter(l => (l.s === selected.id || l.d === selected.id) && !l.deal).sort((a, b) => a.km - b.km);
-  if (my[0]) { my[0].deal = true; my[0].dealAt = new Date().toISOString(); toast('已点亮一盏灯'); } else toast('该点位暂无可标记的连线');
+  if (my[0]) {
+    const lk = my[0];
+    lk.deal = true; lk.dealAt = new Date().toISOString(); toast('已点亮一盏灯');
+    if (GTAPI.mode === 'supabase' && String(lk.s).length > 20 && String(lk.d).length > 20) {
+      GTAPI.markDeal(lk.s, lk.d).then(r => {
+        if (!r.ok) {
+          lk.deal = false; lk.dealAt = undefined; refreshStats();
+          toast(r.reason === 'not-owner' ? '只有买卖双方本人能标记成交' : '云端未记录 · 稍后再试');
+        }
+      }).catch(() => {});
+    }
+  } else toast('该点位暂无可标记的连线');
   refreshStats();
 };
 let toastTimer;
