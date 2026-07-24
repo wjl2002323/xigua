@@ -53,6 +53,8 @@
   #card .kv{display:flex;justify-content:space-between;font-size:12px;margin-top:9px;color:#cbb4a6}
   #card .kv b{color:#f0e2cf;font-weight:600;font-variant-numeric:tabular-nums}
   #card .urgent b{color:#ff6b5e}
+  #card .cphoto{width:100%;max-height:120px;object-fit:cover;border-radius:9px;margin-top:12px;cursor:pointer;display:block}
+  #card .cphoto.big{max-height:none}
   #card .mhd{font-size:10.5px;color:#b39b90;letter-spacing:2px;margin-top:14px;padding-top:10px;border-top:1px solid rgba(255,255,255,.07)}
   #card .mrow{display:flex;align-items:center;gap:8px;min-height:40px;font-size:12px;color:#cbb4a6;cursor:pointer;border-radius:7px;padding:0 6px}
   #card .mrow:hover{background:rgba(255,255,255,.05)}
@@ -136,7 +138,7 @@ function mergePosts(posts) {
   posts.forEach(p => {
     if (!p || !p.lon || !p.lat || D.sIndex[p.id] || D.dIndex[p.id]) return;
     if (p.kind === 'supply') {
-      const s = { id: p.id, kind: 'supply', city: p.city, lon: p.lon, lat: p.lat, name: p.name, variety: p.variety || '麒麟', tons: +p.tons || 1, daysLeft: p.daysLeft || 7, phone: p.phone, priceWish: p.priceWish || null, mine: true };
+      const s = { id: p.id, kind: 'supply', city: p.city, lon: p.lon, lat: p.lat, name: p.name, variety: p.variety || '麒麟', tons: +p.tons || 1, daysLeft: p.daysLeft || 7, phone: p.phone, priceWish: p.priceWish || null, photo: p.photo, mine: true };
       D.supplies.push(s); D.sIndex[s.id] = s;
       const cands = D.demands.map(d => ({ d, km: D.distKm(s, d) })).filter(x => x.km <= x.d.radiusKm).sort((a, b) => a.km - b.km).slice(0, 4);
       cands.forEach(({ d, km }) => D.links.push({ s: s.id, d: d.id, km: Math.round(km), deal: false }));
@@ -459,7 +461,7 @@ function openCard(p) {
       <div class="kv ${p.daysLeft <= 3 ? 'urgent' : ''}"><span>售卖窗口</span><b>剩 ${p.daysLeft} 天</b></div>
       <div class="kv"><span>期望价</span><b>${p.priceWish ? p.priceWish + ' 元/斤' : '面议'}</b></div>
       <div class="kv"><span>潜在买家</span><b>${my.length} 处${near ? ' · 最近 ' + near + ' km' : ''}</b></div>
-      <div class="kv"><span>联系电话</span><b>${p.phone}</b></div>`;
+      <div class="kv"><span>联系电话</span><b>${p.phone}</b></div>${p.photo ? `<img class="cphoto" src="${p.photo}" alt="瓜田照片">` : ''}`;
   } else {
     html = `<h3>${p.name}</h3><div class="tag">${p.city} · ${CT[p.type]} · 需求</div>
       <div class="kv"><span>需求量</span><b>${p.tons} 吨</b></div>
@@ -481,6 +483,8 @@ function openCard(p) {
     }).join('');
   }
   cardBody.innerHTML = html;
+  const ph = cardBody.querySelector('.cphoto');
+  if (ph) ph.onclick = () => ph.classList.toggle('big');
   cardBody.querySelectorAll('.mrow').forEach(el => el.onclick = () => {
     const t = D.sIndex[el.dataset.mid] || D.dIndex[el.dataset.mid];
     if (t) openCard(t);

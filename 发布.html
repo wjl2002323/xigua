@@ -81,11 +81,18 @@
   .field{margin-bottom:22px}
   .fieldLabel{display:block;font-size:14px;color:var(--muted);letter-spacing:1px;margin-bottom:10px}
   .fieldLabel .req{color:#ff9a7c}
+  .fieldHint{font-size:12px;color:var(--muted);margin:-4px 0 10px;letter-spacing:.5px}
   .chips{display:flex;flex-wrap:wrap;gap:10px}
   .chip{min-height:48px;padding:0 18px;display:flex;align-items:center;border-radius:24px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:var(--text);font-size:15px;cursor:pointer;user-select:none}
   .chip.on{border-color:var(--accent);color:#fff;background:rgba(255,255,255,.09)}
   body.kind-sell .chip.on{box-shadow:0 0 0 1px var(--mint) inset}
   body.kind-buy .chip.on{box-shadow:0 0 0 1px var(--amber) inset}
+
+  .photoPick{min-height:88px;border-radius:14px;border:1px dashed rgba(92,232,178,.35);display:flex;align-items:center;justify-content:center;gap:12px;text-align:center;color:var(--muted);font-size:15px;cursor:pointer;padding:10px;user-select:none}
+  .photoPick:active{background:rgba(255,255,255,.04)}
+  .photoPick img{max-height:120px;border-radius:10px;object-fit:cover;display:block}
+  .photoPick .photoActions{display:flex;flex-direction:column;gap:6px;font-size:13px}
+  .photoPick .photoActions a{color:var(--mint)}
 
   .stepper{display:flex;align-items:center;gap:14px}
   .stepper button{width:52px;height:52px;flex:none;border-radius:12px;font-size:26px;line-height:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:var(--text);cursor:pointer}
@@ -213,6 +220,11 @@
         </div>
       </div>
       <div class="field">
+        <label class="fieldLabel">瓜田照片（选填）· 有照片更容易卖</label>
+        <div id="photoPick" class="photoPick"><span>📷 拍一张 / 选一张</span></div>
+        <input id="photoFile" type="file" accept="image/*" capture="environment" class="hidden">
+      </div>
+      <div class="field">
         <label class="fieldLabel">可供量</label>
         <div class="stepper">
           <button id="tonsMinus" type="button">－</button>
@@ -243,6 +255,11 @@
         <label class="fieldLabel">联系电话 <span class="req">必填</span></label>
         <input id="phoneInputSell" class="textInput" type="tel" inputmode="numeric" maxlength="11" placeholder="买家会直接打给你">
       </div>
+      <div id="passWrapSell" class="field hidden">
+        <label class="fieldLabel">密码</label>
+        <div class="fieldHint">第一次用这个手机号就是注册 · 以后用同一个密码</div>
+        <input id="passInputSell" class="textInput" type="password" placeholder="至少 6 位">
+      </div>
     </div>
 
     <div id="s3buy" class="hidden">
@@ -265,6 +282,11 @@
       <div class="field">
         <label class="fieldLabel">联系电话 <span class="req">必填</span></label>
         <input id="phoneInputBuy" class="textInput" type="tel" inputmode="numeric" maxlength="11" placeholder="卖家会直接打给你">
+      </div>
+      <div id="passWrapBuy" class="field hidden">
+        <label class="fieldLabel">密码</label>
+        <div class="fieldHint">第一次用这个手机号就是注册 · 以后用同一个密码</div>
+        <input id="passInputBuy" class="textInput" type="password" placeholder="至少 6 位">
       </div>
     </div>
     <a class="mapLink" href="瓜田灯火.html">查看地图 ›</a>
@@ -346,6 +368,9 @@
   var priceInput = $('priceInput'), nameInputSell = $('nameInputSell'), phoneInputSell = $('phoneInputSell');
   var qtyInput = $('qtyInput'), radiusInput = $('radiusInput'), radiusVal = $('radiusVal');
   var nameInputBuy = $('nameInputBuy'), phoneInputBuy = $('phoneInputBuy');
+  var passWrapSell = $('passWrapSell'), passInputSell = $('passInputSell');
+  var passWrapBuy = $('passWrapBuy'), passInputBuy = $('passInputBuy');
+  var photoPick = $('photoPick'), photoFile = $('photoFile');
 
   var ctaBar = $('ctaBar'), ctaBtn = $('ctaBtn');
   var toastEl = $('toast'), toastTimer = null;
@@ -604,6 +629,49 @@
   // 8. STEP 3 — 详情
   // ---------------------------------------------------------------
   var variety = '麒麟', daysLeft = 7, tons = 10;
+  var photoDataUrl = null, photoBlob = null;
+  var photoPickPlaceholder = photoPick.innerHTML;
+
+  photoPick.addEventListener('click', function(){ photoFile.click(); });
+
+  photoFile.addEventListener('change', function(){
+    var file = photoFile.files && photoFile.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e){
+      var img = new Image();
+      img.onload = function(){
+        var maxEdge = 1000;
+        var scale = Math.min(1, maxEdge / Math.max(img.width, img.height));
+        var cw = Math.round(img.width * scale), ch = Math.round(img.height * scale);
+        var canvas = document.createElement('canvas');
+        canvas.width = cw; canvas.height = ch;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, cw, ch);
+        photoDataUrl = canvas.toDataURL('image/jpeg', 0.72);
+        canvas.toBlob(function(blob){ photoBlob = blob; }, 'image/jpeg', 0.72);
+        renderPhotoPreview();
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  function renderPhotoPreview(){
+    photoPick.innerHTML =
+      '<img src="' + photoDataUrl + '" alt="瓜田照片">' +
+      '<div class="photoActions">' +
+        '<a href="javascript:void(0)" id="photoRetake">换一张</a>' +
+        '<a href="javascript:void(0)" id="photoClearBtn">✕ 不用了</a>' +
+      '</div>';
+    $('photoRetake').addEventListener('click', function(ev){ ev.stopPropagation(); photoFile.click(); });
+    $('photoClearBtn').addEventListener('click', function(ev){
+      ev.stopPropagation();
+      photoDataUrl = null; photoBlob = null;
+      photoFile.value = '';
+      photoPick.innerHTML = photoPickPlaceholder;
+    });
+  }
 
   function initChips(container, onPick){
     container.querySelectorAll('.chip').forEach(function(c){
@@ -682,6 +750,18 @@
     var phone = phoneOf(phoneInputSell);
     if (!validPhone(phone)) { shake(phoneInputSell); toast('电话号码要 11 位哦'); return; }
     if (!tons || tons <= 0) { shake(tonsVal.parentElement); toast('可供量要大于 0'); return; }
+
+    if (GTAPI.mode === 'supabase'){
+      var pass = passInputSell.value;
+      if (pass.length < 6) { shake(passInputSell); toast('密码至少 6 位'); return; }
+      var auth = await GTAPI.ensureAuth(phone, pass);
+      if (!auth.ok){
+        if (auth.reason === 'wrong-password') toast('密码不对 · 如果是新号码请换个密码重试');
+        else toast('登录失败：' + (auth.reason || '请重试'));
+        return;
+      }
+    }
+
     var rec = baseRecord('supply');
     var name = nameInputSell.value.trim();
     rec.name = name || ('瓜农' + phone.slice(-4));
@@ -691,8 +771,14 @@
     var price = priceInput.value.trim();
     rec.priceWish = price ? price : null;
     rec.phone = phone;
+    rec.photoBlob = photoBlob;
+    if (GTAPI.mode === 'local') rec.photo = photoDataUrl;
+
     var res = await saveRecord(rec);
-    if (res && res.ok) { showFlash('🏮', '你的灯已点亮'); }
+    if (res && res.ok) {
+      if (res.warn === 'photo-failed') toast('照片没传上去，其他信息已发布');
+      showFlash('🏮', '你的灯已点亮');
+    }
     else { toast('需要登录才能发布（云端模式）'); }
   }
 
@@ -701,6 +787,18 @@
     if (!validPhone(phone)) { shake(phoneInputBuy); toast('电话号码要 11 位哦'); return; }
     var qty = Number(qtyInput.value);
     if (!qty || qty <= 0) { shake(qtyInput); toast('填一下大概需要多少'); return; }
+
+    if (GTAPI.mode === 'supabase'){
+      var pass = passInputBuy.value;
+      if (pass.length < 6) { shake(passInputBuy); toast('密码至少 6 位'); return; }
+      var auth = await GTAPI.ensureAuth(phone, pass);
+      if (!auth.ok){
+        if (auth.reason === 'wrong-password') toast('密码不对 · 如果是新号码请换个密码重试');
+        else toast('登录失败：' + (auth.reason || '请重试'));
+        return;
+      }
+    }
+
     var rec = baseRecord('demand');
     var name = nameInputBuy.value.trim();
     var defaultName = buyType === 'individual' ? ('买家' + phone.slice(-4))
@@ -711,8 +809,12 @@
     rec.tons = qty;
     rec.radiusKm = Number(radiusInput.value);
     rec.phone = phone;
+
     var res = await saveRecord(rec);
-    if (res && res.ok) { showFlash('📡', '已发布 · 正在为你连线'); }
+    if (res && res.ok) {
+      if (res.warn === 'photo-failed') toast('照片没传上去，其他信息已发布');
+      showFlash('📡', '已发布 · 正在为你连线');
+    }
     else { toast('需要登录才能发布（云端模式）'); }
   }
 
@@ -730,9 +832,16 @@
   // ---------------------------------------------------------------
   // 9. 启动
   // ---------------------------------------------------------------
+  if (typeof GTAPI !== 'undefined' && GTAPI.mode === 'supabase'){
+    passWrapSell.classList.remove('hidden');
+    passWrapBuy.classList.remove('hidden');
+  }
+
   if (modeParam === 'sell') { kind = 'sell'; setAccent('sell'); view = 's2'; }
   else if (modeParam === 'buy') { kind = 'buy'; setAccent('buy'); view = 's1sub'; }
   render();
+
+  window.__GT_TEST = { setPhoto: function(blob, dataUrl){ photoBlob = blob; photoDataUrl = dataUrl; } };
 
 })();
 </script>
